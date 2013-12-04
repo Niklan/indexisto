@@ -1,0 +1,17 @@
+<?php
+/**
+ * @file
+ * Содержит необходимые операции при установки и удалении модуля.
+ */
+
+/**
+ * Используем hook_uninstall().
+ *
+ * Удаляем всю нашу информацию.
+ */
+function indexisto_uninstall() {
+  variable_del('indexisto_index_id');
+  variable_del('indexisto_autocomplete');
+  variable_del('indexisto_autocorrect');
+  variable_del('indexisto_placeholder');
+}

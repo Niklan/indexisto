@@ -1,3 +1,4 @@
 name = Indexisto
-description = AProvide search block for indexisto.
+description = Provide search block for indexisto.
+configure = admin/config/search/indexisto
 core = 7.x

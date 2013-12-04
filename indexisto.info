@@ -1,0 +1,3 @@
+name = Indexisto
+description = AProvide search block for indexisto.
+core = 7.x

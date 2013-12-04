@@ -89,9 +89,9 @@ function indexisto_block_view_alter(&$data, $block) {
   if ($block->delta == 'indexisto_search') {
       $index_id = variable_get('indexisto_index_id');
       // Автозаполнение.
-      variable_get('indexisto_autocomplete', false) ? $autocomplete = 'true' :  $autocomplete = 'false';
+      variable_get('indexisto_autocomplete', false) ? $autocomplete = 'on' :  $autocomplete = 'off';
       // Автокоррекция.
-      variable_get('indexisto_autocorrect', false) ? $autocomplete = 'true' :  $autocomplete = 'false';
+      variable_get('indexisto_autocorrect', false) ? $autocomplete = 'on' :  $autocomplete = 'off';
       $placeholder = variable_get('indexisto_placeholder', 'Начните ввод');
 
       $data['content'] = "<input autocomplete='{$autocomplete}'  autocorrect='off' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;' type='text' />";

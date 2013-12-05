@@ -10,8 +10,7 @@
  * Удаляем всю нашу информацию.
  */
 function indexisto_uninstall() {
-  variable_del('indexisto_index_id');
-  variable_del('indexisto_autocomplete');
-  variable_del('indexisto_autocorrect');
-  variable_del('indexisto_placeholder');
+  // Удалчем все наши настройки и чистим кеш.
+  db_query("DELETE FROM {variable} WHERE name LIKE 'indexisto_%'");
+  cache_clear_all('variables', 'cache');
 }

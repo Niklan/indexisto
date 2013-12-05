@@ -1,8 +1,11 @@
 <?php
 /**
-* @file
-* A description of what your module does.
-*/
+ * @file
+ * Интеграция с поисковым сервисом Indexisto.
+ *
+ * http://indexisto.com/
+ */
+define('INDEXISTO_DEFAULT_STYLES', 'outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;');
 
 /**
  * Используем hook_menu().
@@ -16,49 +19,31 @@ function indexisto_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('indexisto_settings_form'),
     'access arguments' => array('administer site configuration'),
+    'file' => 'indexisto.admin.inc',
+  );
+
+  $items['admin/config/search/indexisto/settings'] = array(
+    'title' => 'Indexisto search settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('indexisto_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'indexisto.admin.inc',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 0,
+  );
+
+  $items['admin/config/search/indexisto/content_settings'] = array(
+    'title' => 'Content settings',
+    'description' => 'Позволяет тонко настроить отдачу материалов в индекс.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('indexisto_content_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'indexisto.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
   );
 
   return $items;
-}
-
-function indexisto_settings_form($form, &$form_state) {
-  $form = array();
-
-  $form['indexisto_index_id'] = array(
-    '#type' => 'textfield',
-    '#title' => 'ID поисковой системы',
-    '#description' => 'Укажите ID вашей поисковой системы.',
-    '#default_value' => variable_get('indexisto_index_id', ''),
-    '#size' => 60,
-    '#maxlength' => 128,
-    '#required' => TRUE,
-  );
-
-  $form['indexisto_autocomplete'] = array(
-    '#type' => 'checkbox',
-    '#title' => 'Автозаполнение',
-    '#description' => 'Отметьте если необходимо автозаполнение.',
-    '#default_value' => variable_get('indexisto_autocomplete', 0),
-  );
-
-  $form['indexisto_autocorrect'] = array(
-    '#type' => 'checkbox',
-    '#title' => 'Автокоррекция',
-    '#description' => 'Отметьте если необходимо автозаполнение.',
-    '#default_value' => variable_get('indexisto_autocorrect', 0),
-  );
-
-  $form['indexisto_placeholder'] = array(
-    '#type' => 'textfield',
-    '#title' => 'Текст в строке поиска',
-    '#description' => 'Текст который отображается до начала ввода поискового запроса.',
-    '#default_value' => variable_get('indexisto_placeholder', 'Начните ввод'),
-    '#size' => 60,
-    '#maxlength' => 128,
-    '#required' => TRUE,
-  );
-
-  return system_settings_form($form);
 }
 
 /**
@@ -70,7 +55,7 @@ function indexisto_block_info() {
   $blocks = array();
 
   // Если не указан ID поискового индекса, мы не генерируем блок.
-  if (variable_get('indexisto_index_id', false)) {
+  if (variable_get('indexisto_index_id', FALSE)) {
     $blocks['indexisto_search'] = array(
       'info' => t('Indexisto search'),
     );
@@ -87,14 +72,16 @@ function indexisto_block_info() {
 function indexisto_block_view_alter(&$data, $block) {
   // Ловим наш блок.
   if ($block->delta == 'indexisto_search') {
-      $index_id = variable_get('indexisto_index_id');
-      // Автозаполнение.
-      variable_get('indexisto_autocomplete', false) ? $autocomplete = 'on' :  $autocomplete = 'off';
-      // Автокоррекция.
-      variable_get('indexisto_autocorrect', false) ? $autocorrect = 'on' :  $autocorrect = 'off';
-      $placeholder = variable_get('indexisto_placeholder', 'Начните ввод');
+    $index_id = variable_get('indexisto_index_id');
+    // Автозаполнение.
+    variable_get('indexisto_autocomplete', FALSE) ? $autocomplete = 'on' : $autocomplete = 'off';
+    // Автокоррекция.
+    variable_get('indexisto_autocorrect', FALSE) ? $autocorrect = 'on' : $autocorrect = 'off';
+    $placeholder = variable_get('indexisto_placeholder', 'Начните ввод');
+    // Стили ипута.
+    $styles = variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES);
 
-      $data['content'] = "<input autocomplete='{$autocomplete}'  autocorrect='{$autocorrect}' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;' type='text' />";
+    $data['content'] = "<input autocomplete='{$autocomplete}'  autocorrect='{$autocorrect}' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='{$styles}' type='text' />";
   }
 
   return $block;
@@ -107,4 +94,66 @@ function indexisto_block_view_alter(&$data, $block) {
  */
 function indexisto_preprocess_html(&$variables) {
   drupal_add_js("http://servant.indexisto.com/files/searchbox/searchbox.nocache.js?type=edit");
+}
+
+/**
+ * Используем hook_node_insert().
+ *
+ * Перехватываем в момент добавления в базу.
+ */
+function indexisto_node_insert($node) {
+  // Передаем базовые настройки.
+  $values = array(
+    'id' => $node->nid,
+    'created' => $node->created,
+  );
+
+  // Если задан заголовок.
+  $title = variable_get('indexisto_' . $node->type . '_title', FALSE);
+  $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
+
+  // Делаем запрсо на отсылку.
+  indexisto_send_data($values);
+}
+
+/**
+ * Используем hook_node_update().
+ *
+ * Перехватываем в момент обновления содержимого.
+ */
+function indexisto_node_update($node) {
+  // Передаем базовые настройки.
+  $values = array(
+    'id' => $node->nid,
+    'created' => $node->created,
+  );
+
+  // Если задан заголовок.
+  $title = variable_get('indexisto_' . $node->type . '_title', FALSE);
+  $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
+
+  // Если задано содержимое.
+  $body = variable_get('indexisto_' . $node->type . '_body', FALSE);
+  $body ? $values['body'] = token_replace($body, array('node' => $node)) : FALSE;
+
+  // Если задано изображение.
+  $image = variable_get('indexisto_' . $node->type . '_image', FALSE);
+  $image ? $values['_image'] = token_replace($image, array('node' => $node)) : FALSE;
+
+  dpm($node);
+  // Делаем запрос на отсылку.
+  indexisto_send_data($values);
+}
+
+/**
+ * @param $values
+ *
+ * Может содержать:
+ * _id - id материала;
+ * _image - абсолютная ссылка для изображения (превью);
+ * _url - ссылка для выдачи;
+ * _title - заголовок содержания.
+ */
+function indexisto_send_data($values) {
+  //dpm($values);
 }

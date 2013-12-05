@@ -102,18 +102,7 @@ function indexisto_preprocess_html(&$variables) {
  * Перехватываем в момент добавления в базу.
  */
 function indexisto_node_insert($node) {
-  // Передаем базовые настройки.
-  $values = array(
-    'id' => $node->nid,
-    'created' => $node->created,
-  );
-
-  // Если задан заголовок.
-  $title = variable_get('indexisto_' . $node->type . '_title', FALSE);
-  $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
-
-  // Делаем запрсо на отсылку.
-  indexisto_send_data($values);
+  indexisto_node_data_prepare($node);
 }
 
 /**
@@ -122,38 +111,69 @@ function indexisto_node_insert($node) {
  * Перехватываем в момент обновления содержимого.
  */
 function indexisto_node_update($node) {
-  // Передаем базовые настройки.
-  $values = array(
-    'id' => $node->nid,
-    'created' => $node->created,
-  );
-
-  // Если задан заголовок.
-  $title = variable_get('indexisto_' . $node->type . '_title', FALSE);
-  $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
-
-  // Если задано содержимое.
-  $body = variable_get('indexisto_' . $node->type . '_body', FALSE);
-  $body ? $values['body'] = token_replace($body, array('node' => $node)) : FALSE;
-
-  // Если задано изображение.
-  $image = variable_get('indexisto_' . $node->type . '_image', FALSE);
-  $image ? $values['_image'] = token_replace($image, array('node' => $node)) : FALSE;
-
-  dpm($node);
-  // Делаем запрос на отсылку.
-  indexisto_send_data($values);
+  indexisto_node_data_prepare($node);
 }
 
 /**
- * @param $values
+ * @param $node
  *
- * Может содержать:
- * _id - id материала;
- * _image - абсолютная ссылка для изображения (превью);
- * _url - ссылка для выдачи;
- * _title - заголовок содержания.
+ * Подготовка данных для отсылки в api для нод.
  */
-function indexisto_send_data($values) {
-  //dpm($values);
+function indexisto_node_data_prepare($node) {
+  // Если только это необходимо.
+  if (variable_get('indexisto_send_data', 0)) {
+    // Передаем базовые настройки.
+    $values = array(
+      '_id' => $node->nid,
+      'created' => $node->created,
+      '_url' => 'http://' . $_SERVER['SERVER_NAME'] . '/' . $node->path['alias'],
+    );
+
+    // Если задан заголовок.
+    $title = variable_get('indexisto_' . $node->type . '_title', FALSE);
+    $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
+
+    // Если задано содержимое.
+    $body = variable_get('indexisto_' . $node->type . '_body', FALSE);
+    $body ? $values['body'] = strip_tags(token_replace($body, array('node' => $node))) : FALSE;
+
+    // Если задано изображение.
+    $image = variable_get('indexisto_' . $node->type . '_image', FALSE);
+    $image ? $values['_image'] = token_replace($image, array('node' => $node)) : FALSE;
+
+    // Финальная подготовка данных, а также удаления переносов и табуляции.
+    $data = str_replace(array("\\n", "\\t", "\\r"), "", json_encode($values));
+
+    indexisto_send_data($data, $node->type);
+  }
+}
+
+/**
+ * @param $data
+ * @param $type
+ *
+ * Отправка данных в базу.
+ */
+function indexisto_send_data($data, $data_type = 'default') {
+  $api_url = 'http://api.indexisto.com';
+  $api_version = '/1.0';
+  $document = '/document';
+  $indexid = '/' . variable_get('indexisto_index_id');
+  $secret = variable_get('indexisto_secret_api_key');
+
+  // Создаем URL для отсылки данных.
+  $request_url = $api_url . $api_version . $document . $indexid . '/' . $data_type . '?code=' . $secret;
+
+  $options = array(
+    'method' => 'POST',
+    'data' => $data,
+  );
+
+  // Выполняем запрос.
+  $result = drupal_http_request($request_url, $options);
+
+  //dpm($data);
+  //dpm($data_type);
+  //dpm($request_url);
+  //dpm($result);
 }

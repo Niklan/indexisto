@@ -73,11 +73,28 @@ function indexisto_content_settings($form, &$form_state) {
   // Получаем все типы содержимого на сайте.
   $content_types = node_type_get_types();
 
+  $form['indexisto_send_data'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Отсылать структурированные данные',
+    '#description' => 'Включая данную опцию, при сохранении, изминении или удалении содержимого, на сервер API будут отсылаться структурированные данные, для более точного индексирования.',
+    '#default_value' => variable_get('indexisto_send_data', 0),
+    '#weight' => 0,
+  );
+
+  // Секретный ключ
+  $form['indexisto_secret_api_key'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Секретный ключ API',
+    '#default_value' => variable_get('indexisto_secret_api_key', ''),
+    '#weight' => 1,
+    '#required' => TRUE,
+  );
+
   // Типы содержимого.
   $form['content_types'] = array(
     '#type' => 'fieldset',
     '#title' => 'Типы содержимого',
-    '#weight' => 0,
+    '#weight' => 2,
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );

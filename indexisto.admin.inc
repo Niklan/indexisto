@@ -199,5 +199,50 @@ function indexisto_content_settings($form, &$form_state) {
     );
   }
 
+  // Комментарии.
+  $form['comments'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Комментарии',
+    '#weight' => 4,
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+
+  // Запрет индексации.
+  // 0 - разрешено.
+  // 1 - запрещено.
+  $form['comments']['indexisto_comments_send_data'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Запретить индексацию комментариев.',
+    '#description' => 'Данный тип материала не попадет в индекс.',
+    '#default_value' => variable_get('indexisto_comments_send_data', 0),
+    '#weight' => -1,
+  );
+
+  $form['comments']['indexisto_comments_body'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Содержимое комментария',
+    '#description' => 'Содержание. Рекомендуется [comment:body].',
+    '#default_value' => variable_get('indexisto_comments_body', '[comment:body]'),
+    '#weight' => 1,
+    '#token_insert' => TRUE,
+  );
+
+  // Добавляем списки токенов.
+  $form['comments']['token_help'] = array(
+    '#title' => t('Replacement patterns'),
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 99,
+  );
+
+  $form['comments']['token_help']['help'] = array(
+    '#theme' => 'token_tree',
+    '#token_types' => array(
+      'comment',
+    ),
+  );
+
   return system_settings_form($form);
 }

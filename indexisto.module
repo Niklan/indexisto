@@ -144,10 +144,12 @@ function indexisto_node_data_prepare($node) {
     $values = array(
       '_id' => $node->nid,
       'created' => $node->created,
-      '_url' => 'http://' . $_SERVER['SERVER_NAME'] . '/' . $node->path['source'],
       '_subtype' => $node->type,
-      'comments' => $node->comment_count,
+      '_url' => $node->path['source'],
     );
+
+    // Количество комментариев.
+    isset($node->comment_count) ? $values['comments'] = $node->comment_count : FALSE;
 
     // Подготовка URL материала.
     // Перезаписываем системный URL.
@@ -189,11 +191,11 @@ function indexisto_node_data_prepare($node) {
       elseif (!empty($values['body'])) {
         preg_match('/<img.+src=[\'"](?P<src>.+?)[\'"].*>/i', $values['body'], $image);
         // Если есть домен в ссылке картинки, то тупо записываем.
-        if (preg_match('/^(http|https):\\/\\/([A-Z0-9][A-Z0-9_-]*(?:.[A-Z0-9][A-Z0-9_-]*)+):?(d+)?\\/?/i', $image['src'])) {
+        if ($image && preg_match('/^(http|https):\\/\\/([A-Z0-9][A-Z0-9_-]*(?:.[A-Z0-9][A-Z0-9_-]*)+):?(d+)?\\/?/i', $image['src'])) {
           $values['_image'] = $image['src'];
         }
         // Ну а иначе добавляем.
-        else {
+        elseif ($image) {
           $values['_image'] = 'http://' . $_SERVER['SERVER_NAME'] . $image['src'];
         }
       }
@@ -201,11 +203,11 @@ function indexisto_node_data_prepare($node) {
     elseif (!empty($values['body'])) {
       preg_match('/<img.+src=[\'"](?P<src>.+?)[\'"].*>/i', $values['body'], $image);
       // Если есть домен в ссылке картинки, то тупо записываем.
-      if (preg_match('/^(http|https):\\/\\/([A-Z0-9][A-Z0-9_-]*(?:.[A-Z0-9][A-Z0-9_-]*)+):?(d+)?\\/?/i', $image['src'])) {
+      if ($image && preg_match('/^(http|https):\\/\\/([A-Z0-9][A-Z0-9_-]*(?:.[A-Z0-9][A-Z0-9_-]*)+):?(d+)?\\/?/i', $image['src'])) {
         $values['_image'] = $image['src'];
       }
       // Ну а иначе добавляем.
-      else {
+      elseif ($image) {
         $values['_image'] = 'http://' . $_SERVER['SERVER_NAME'] . $image['src'];
       }
     }
@@ -226,7 +228,76 @@ function indexisto_node_data_prepare($node) {
 }
 
 /**
+ * Используем hook_comment_insert().
+ *
+ * Перехватываем в момент добавления в базу.
+ */
+function indexisto_comment_insert($comment) {
+  indexisto_comment_data_prepare($comment);
+}
+
+/**
+ * Используем hook_comment_update().
+ *
+ * Перехватываем в момент обновления.
+ */
+function indexisto_comment_update($comment) {
+  indexisto_comment_data_prepare($comment);
+}
+
+/**
+ * Используем hook_comment_delete().
+ *
+ * Перехватываем в момент удаления.
+ */
+function indexisto_comment_delete($comment) {
+  // Записываем id удаляемого комментария.
+  $values = array(
+    '_id' => $comment->cid,
+  );
+
+  // Обрабатываем данные.
+  $data = json_encode($values);
+
+  // Посылаем запрос что удалили.
+  indexisto_send_data($data, 'DELETE');
+}
+
+/**
+ * @param $comment
+ *
+ * Подготовка данных для отсылки в api для комментариев.
+ */
+function indexisto_comment_data_prepare($comment) {
+  // Если индексация комментариев разрешена (0).
+  if (!variable_get('indexisto_comments_send_data', 0)) {
+    $values = array(
+      '_id' => $comment->cid,
+      'created' => $comment->created,
+      '_subtype' => 'comments',
+    );
+
+    // Загружаем ноду к которой комментарий.
+    $node = node_load($comment->nid);
+
+    // Путь алиас или системный.
+    $alias = drupal_get_path_alias('/node/'.$node->nid);
+    $values['_url'] = $alias . '#comment-' . $comment->cid;
+
+    // Если задано содержимое.
+    $body = variable_get('indexisto_comments_body', '[comment:body]');
+    $body ? $values['_sumtext'] = token_replace($body, array('comment' => $comment), array('clear' => TRUE)) : FALSE;
+
+    // Финальная подготовка данных, а также удаления переносов и табуляции.
+    $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
+
+    indexisto_send_data($data);
+  }
+}
+
+/**
  * @param $data
+ * @param $method
  *
  * Отправка данных в базу.
  */
@@ -253,6 +324,4 @@ function indexisto_send_data($data, $method = 'POST') {
 
   // Выполняем запрос.
   $result = drupal_http_request($request_url . '?code=' . $code, $options);
-
-  dpm($result);
 }

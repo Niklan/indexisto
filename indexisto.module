@@ -135,7 +135,7 @@ function indexisto_node_data_prepare($node) {
 
     // Если задано содержимое.
     $body = variable_get('indexisto_' . $node->type . '_body', FALSE);
-    $body ? $values['body'] = strip_tags(token_replace($body, array('node' => $node))) : FALSE;
+    $body ? $values['_sumtext'] = strip_tags(token_replace($body, array('node' => $node))) : FALSE;
 
     // Если задано изображение.
     $image = variable_get('indexisto_' . $node->type . '_image', FALSE);
@@ -144,7 +144,7 @@ function indexisto_node_data_prepare($node) {
     // Финальная подготовка данных, а также удаления переносов и табуляции.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", json_encode($values));
 
-    indexisto_send_data($data, $node->type);
+    indexisto_send_data($data);
   }
 }
 
@@ -154,7 +154,7 @@ function indexisto_node_data_prepare($node) {
  *
  * Отправка данных в базу.
  */
-function indexisto_send_data($data, $data_type = 'default') {
+function indexisto_send_data($data) {
   $api_url = 'http://api.indexisto.com';
   $api_version = '/1.0';
   $document = '/document';
@@ -162,7 +162,10 @@ function indexisto_send_data($data, $data_type = 'default') {
   $secret = variable_get('indexisto_secret_api_key');
 
   // Создаем URL для отсылки данных.
-  $request_url = $api_url . $api_version . $document . $indexid . '/' . $data_type . '?code=' . $secret;
+  $request_url = $api_url . $api_version . $document . $indexid . '/default';
+
+  // Генерируем ключ для отсылки данных.
+  $code = md5($request_url . $data . $secret);
 
   $options = array(
     'method' => 'POST',
@@ -170,10 +173,9 @@ function indexisto_send_data($data, $data_type = 'default') {
   );
 
   // Выполняем запрос.
-  $result = drupal_http_request($request_url, $options);
+  $result = drupal_http_request($request_url . '?code=' . $code, $options);
 
-  //dpm($data);
-  //dpm($data_type);
-  //dpm($request_url);
-  //dpm($result);
+  dpm($data);
+  dpm($request_url . '?code=' . $code);
+  dpm($result);
 }

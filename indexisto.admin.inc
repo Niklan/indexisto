@@ -121,6 +121,17 @@ function indexisto_content_settings($form, &$form_state) {
       '#collapsed' => TRUE,
     );
 
+    // Отсылать ли данные по данному типу содержимому или нет
+    // 0 - отсылать.
+    // 1 - запрет на отсылку.
+    $form['content_types'][$content_type]['indexisto_' . $content_type . '_send_data'] = array(
+      '#type' => 'checkbox',
+      '#title' => 'Запретить индексацию данного типа содержимого',
+      '#description' => 'Данный тип материала не попадет в индекс.',
+      '#default_value' => variable_get('indexisto_' . $content_type . '_send_data', 0),
+      '#weight' => -1,
+    );
+
     // Поле для заголовка.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_title'] = array(
       '#type' => 'textfield',
@@ -141,13 +152,23 @@ function indexisto_content_settings($form, &$form_state) {
       '#token_insert' => TRUE,
     );
 
+    // Общее содержимое.
+    $form['content_types'][$content_type]['indexisto_' . $content_type . '_sumtext'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Общее содержимое',
+      '#description' => 'Сборка всех контентных данных в единое место, по ним будет производиться поиск. Рекомендуется вставка содержимого, тегов и прочих контентовых данных.',
+      '#default_value' => variable_get('indexisto_' . $content_type . '_sumtext', '[node:body]'),
+      '#weight' => 2,
+      '#token_insert' => TRUE,
+    );
+
     // Изображение.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_image'] = array(
       '#type' => 'textfield',
       '#title' => 'Изображение',
       '#description' => 'Изображение. Рекомендуется [node:body].',
       '#default_value' => variable_get('indexisto_' . $content_type . '_image', ''),
-      '#weight' => 2,
+      '#weight' => 3,
       '#token_insert' => TRUE,
     );
 
@@ -157,7 +178,7 @@ function indexisto_content_settings($form, &$form_state) {
       '#title' => 'Теги',
       '#description' => 'Укажите поле с тегами.',
       '#default_value' => variable_get('indexisto_' . $content_type . '_tags', ''),
-      '#weight' => 3,
+      '#weight' => 4,
       '#token_insert' => TRUE,
     );
 

@@ -70,6 +70,9 @@ function indexisto_settings_form($form, &$form_state) {
 function indexisto_content_settings($form, &$form_state) {
   $form = array();
 
+  // Мы оповещаем пользователя о том, что настройки могут ухудшить ситуацию.
+  drupal_set_message('Данные настройки предназначены для продвинутых пользователей. Если вы не пониманимаете что они делают или как ими пользоваться, пожалуйста, не включайте отсылку данных, так как это может навредить.', 'warning', TRUE);
+
   // Получаем все типы содержимого на сайте.
   $content_types = node_type_get_types();
 
@@ -90,11 +93,20 @@ function indexisto_content_settings($form, &$form_state) {
     '#required' => TRUE,
   );
 
+
+  $form['indexisto_path_aliases'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'По возможности использовать синонимы',
+    '#description' => 'Если выключить, то будут отсылаться системные url вида /node/1.',
+    '#default_value' => variable_get('indexisto_path_aliases', 1),
+    '#weight' => 2,
+  );
+
   // Типы содержимого.
   $form['content_types'] = array(
     '#type' => 'fieldset',
     '#title' => 'Типы содержимого',
-    '#weight' => 2,
+    '#weight' => 3,
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );

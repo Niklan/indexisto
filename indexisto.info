@@ -2,4 +2,4 @@ name = Indexisto
 description = Provide search block for indexisto.
 configure = admin/config/search/indexisto
 core = 7.x
-dependencies[] = Token
+dependencies[] = token

@@ -125,8 +125,8 @@ function indexisto_content_settings($form, &$form_state) {
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_title'] = array(
       '#type' => 'textfield',
       '#title' => 'Заголовок содержимого',
-      '#description' => 'Возвращаемый заголовок содержимого. Рекомендуется [node:title].',
-      '#default_value' => variable_get('indexisto_' . $content_type . '_title', ''),
+      '#description' => 'Возвращаемый заголовок содержимого.',
+      '#default_value' => variable_get('indexisto_' . $content_type . '_title', '[node:title]'),
       '#weight' => 0,
       '#token_insert' => TRUE,
     );
@@ -136,7 +136,7 @@ function indexisto_content_settings($form, &$form_state) {
       '#type' => 'textfield',
       '#title' => 'Содержимое',
       '#description' => 'Содержание. Рекомендуется [node:body].',
-      '#default_value' => variable_get('indexisto_' . $content_type . '_body', ''),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_body', '[node:body]'),
       '#weight' => 1,
       '#token_insert' => TRUE,
     );
@@ -151,6 +151,16 @@ function indexisto_content_settings($form, &$form_state) {
       '#token_insert' => TRUE,
     );
 
+    // Теги.
+    $form['content_types'][$content_type]['indexisto_' . $content_type . '_tags'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Теги',
+      '#description' => 'Укажите поле с тегами.',
+      '#default_value' => variable_get('indexisto_' . $content_type . '_tags', ''),
+      '#weight' => 3,
+      '#token_insert' => TRUE,
+    );
+
     // Добавляем списки токенов.
     $form['content_types'][$content_type]['token_help'] = array(
       '#title' => t('Replacement patterns'),
@@ -159,6 +169,7 @@ function indexisto_content_settings($form, &$form_state) {
       '#collapsed' => TRUE,
       '#weight' => 99,
     );
+
     $form['content_types'][$content_type]['token_help']['help'] = array(
       '#theme' => 'token_tree',
       '#token_types' => array(

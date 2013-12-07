@@ -112,7 +112,8 @@ function indexisto_preprocess_html(&$variables) {
  * Перехватываем в момент добавления в базу.
  */
 function indexisto_node_insert($node) {
-  indexisto_node_data_prepare($node);
+  $data = indexisto_node_data_prepare($node);
+  indexisto_send_data($data);
 }
 
 /**
@@ -121,7 +122,8 @@ function indexisto_node_insert($node) {
  * Перехватываем в момент обновления содержимого.
  */
 function indexisto_node_update($node) {
-  indexisto_node_data_prepare($node);
+  $data = indexisto_node_data_prepare($node);
+  indexisto_send_data($data);
 }
 
 /**
@@ -144,6 +146,7 @@ function indexisto_node_delete($node) {
 
 /**
  * @param $node
+ * @param $operation
  *
  * Подготовка данных для отсылки в api для нод.
  */
@@ -233,7 +236,8 @@ function indexisto_node_data_prepare($node) {
     // Финальная подготовка данных, а также удаления переносов и табуляции.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
-    indexisto_send_data($data);
+    // Возвращаем данные.
+    return $data;
   }
 }
 
@@ -243,7 +247,8 @@ function indexisto_node_data_prepare($node) {
  * Перехватываем в момент добавления в базу.
  */
 function indexisto_comment_insert($comment) {
-  indexisto_comment_data_prepare($comment);
+  $data = indexisto_comment_data_prepare($comment);
+  indexisto_send_data($data);
 }
 
 /**
@@ -252,7 +257,8 @@ function indexisto_comment_insert($comment) {
  * Перехватываем в момент обновления.
  */
 function indexisto_comment_update($comment) {
-  indexisto_comment_data_prepare($comment);
+  $data = indexisto_comment_data_prepare($comment);
+  indexisto_send_data($data);
 }
 
 /**
@@ -348,16 +354,17 @@ function indexisto_batch_start($form, &$form_state) {
   // 0 - обновление и\или добавление в индекс.
   // 1 - удаление из индекса.
   $operation_type_id = $form_state['values']['batch_operation_type'];
+  $operation_type_name = $operation_type_id ? 'DELETE' : 'POST';
 
   // Информация об операциях.
   $operations = array(
     0 => array(
       'name' => 'Добавление и\или обновление индекса',
-      'function' => '_batch_indexisto_import',
+      'function' => '_batch_indexisto_do',
     ),
     1 => array(
       'name' => 'Удаление из индекса',
-      'function' => '_batch_indexisto_delete',
+      'function' => '_batch_indexisto_do',
     ),
   );
 
@@ -375,7 +382,7 @@ function indexisto_batch_start($form, &$form_state) {
   $batch = array(
     'title' => $operations[$operation_type_id]['name'],
     'operations' => array(
-      array($operations[$operation_type_id]['function'], array($operation_content_types)),
+      array($operations[$operation_type_id]['function'], array($operation_content_types, $operation_type_name)),
     ),
     'progress_message' => 'Статус операции: @current из @total.',
     'error_message' => t('Error!'),
@@ -388,71 +395,92 @@ function indexisto_batch_start($form, &$form_state) {
 /**
  * Добавляем данные в индекс.
  */
-function _batch_indexisto_import($content_types, &$context) {
-  // Для каждого указанного типа.
-  foreach ($content_types as $type) {
-    // Если тип комметарий.
-    if ($type == 'comment') {
+function _batch_indexisto_do($content_types, $operation_type, &$context) {
+  // Если это комментарии, то обработка иная.
+  $is_comment = in_array('comment', $content_types) ? TRUE : FALSE;
 
-    }
-    // Остальное всё ноды.
-    else {
-      // Получем все id нод нужного нам типа.
-      $nids = db_select('node', 'n')
+  // Для каждого указанного типа.
+  // Получем все id нод нужного нам типа.
+  if ($is_comment) {
+
+  }
+  else {
+    // Список всех id нод.
+    $nids = array();
+
+    foreach ($content_types as $content_type) {
+      $nids_new = db_select('node', 'n')
         ->fields('n', array('nid'))
         ->fields('n', array('type'))
-        ->condition('n.type', $type)
+        ->condition(
+          db_or()
+            ->condition('n.type', $content_type)
+        )
         ->execute()
         ->fetchCol();
 
-      // Получаем количество нод.
-      if (empty($context['sandbox']['progress'])) {
-        // Текущее состояние.
-        $context['sandbox']['progress'] = 0;
-        // Всего.
-        $context['sandbox']['max'] = count($nids);
-        // Добавляем операцию в бд.
-        watchdog('import', 'import {$type}');
-      }
-
-      // Текущая итерация.
-      if (empty($context['sandbox']['iteration'])) {
-        $context['sandbox']['iteration'] = 0;
-      }
-
-      // Проверяем не закончился ли цикл.
-      if ($context['sandbox']['iteration'] < $context['sandbox']['max']) {
-        // Указываем сколько за один цикл проделывать операций, чтобы не
-        // положить сервер от нагрузки.
-        $limit = 10;
-
-        // Количество уже проделанных операций.
-        $counter = 0;
-
-        if ($context['sandbox']['progress'] != 0) {
-          $context['sandbox']['iteration'] = $context['sandbox']['iteration'] + $limit;
-        }
-
-        // Прогоняем наши ноды.
-        for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
-          // Грузим ноду и отсылаем.
-          $node = node_load($nids[$counter]);
-          indexisto_node_data_prepare($node);
-
-          // Указываем батчу что мы выполнили один продукт.
-          $context['sandbox']['progress']++;
-          $counter++;
-
-          // Выводим инфу для юзера.
-          $context['message'] = t('Now processing type of: %type', array('%type' => $type));
-          $context['results']['processed'] = $context['sandbox']['progress'];
-        }
-      }
-
-      if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
-        $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
-      }
+      $nids = array_merge($nids, $nids_new);
     }
+  }
+
+  // Получаем количество данных.
+  if (empty($context['sandbox']['progress'])) {
+    // Текущее состояние.
+    $context['sandbox']['progress'] = 0;
+    // Всего.
+    if ($is_comment) {
+
+    }
+    else {
+      $context['sandbox']['max'] = count($nids);
+    }
+
+    // Добавляем операцию в бд.
+    watchdog('import', 'import indexisto');
+  }
+
+  // Текущая итерация.
+  if (empty($context['sandbox']['iteration'])) {
+    $context['sandbox']['iteration'] = 0;
+  }
+
+  // Проверяем не закончился ли цикл.
+  if ($context['sandbox']['iteration'] < $context['sandbox']['max']) {
+    // Указываем сколько за один цикл проделывать операций, чтобы не
+    // положить сервер от нагрузки.
+    $limit = 10;
+
+    // Количество уже проделанных операций.
+    $counter = 0;
+
+    if ($context['sandbox']['progress'] != 0) {
+      $context['sandbox']['iteration'] = $context['sandbox']['iteration'] + $limit;
+    }
+
+    // Прогоняем наши данные.
+    for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
+      if ($is_comment) {
+
+      }
+      else {
+        // Грузим ноду и отсылаем.
+        $node = node_load($nids[$counter]);
+        $data = indexisto_node_data_prepare($node);
+        indexisto_send_data($data, $operation_type);
+      }
+
+      // Указываем батчу что мы выполнили один продукт.
+      $context['sandbox']['progress']++;
+      $counter++;
+
+      // Выводим инфу для юзера.
+      $context['message'] = 'Выполнение операций.';
+      $context['results']['processed'] = $context['sandbox']['progress'];
+    }
+  }
+
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
   }
 }
 
@@ -469,7 +497,10 @@ function indexisto_batch_finished($success, $results, $operations) {
   }
   else {
     $error_operation = reset($operations);
-    drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
+    drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array(
+      '@operation' => $error_operation[0],
+      '@args' => print_r($error_operation[0], TRUE)
+    )));
   }
   watchdog('import', 'import finished');
 }

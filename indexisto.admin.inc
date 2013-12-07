@@ -281,9 +281,6 @@ function indexisto_batch_form($form, &$form_state) {
     $allowed_types[] = $content_type->type;
   }
 
-  // Не забываем и про комментарии.
-  $allowed_types[] = 'comment';
-
   $form['batch_operation_content_types'] = array(
     '#type' => 'checkboxes',
     '#options' => drupal_map_assoc($allowed_types),

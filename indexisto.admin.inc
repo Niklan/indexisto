@@ -79,7 +79,7 @@ function indexisto_content_settings($form, &$form_state) {
   $form['indexisto_send_data'] = array(
     '#type' => 'checkbox',
     '#title' => 'Отсылать структурированные данные',
-    '#description' => 'Включая данную опцию, при сохранении, изминении или удалении содержимого, на сервер API будут отсылаться структурированные данные, для более точного индексирования.',
+    '#description' => 'Включая данную опцию, при сохранении, изменении или удалении содержимого, на сервер API будут отсылаться структурированные данные, для более точного индексирования.',
     '#default_value' => variable_get('indexisto_send_data', 0),
     '#weight' => 0,
   );
@@ -245,4 +245,71 @@ function indexisto_content_settings($form, &$form_state) {
   );
 
   return system_settings_form($form);
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * Настройка батч операций.
+ */
+function indexisto_batch_form($form, &$form_state) {
+  $form = array();
+
+  // Типы наших операций.
+  $operation_types = array(
+    0 => 'Добавление и\или обновление в индекс',
+    1 => 'Удаление из индекса'
+  );
+
+  $form['batch_operation_type'] = array(
+    '#type' => 'radios',
+    '#title' => 'Тип операции на выполнение',
+    '#default_value' => 0,
+    '#options' => $operation_types,
+    '#description' => 'Выберите какие операции необходимо произвести.',
+  );
+
+  // Доступные для операций типы.
+  $allowed_types = array();
+
+  // Получаем все типы содержимого на сайте.
+  $content_types = node_type_get_types();
+
+  // Добавляем в доступные типы все наши типы содержимого.
+  foreach ($content_types as $content_type) {
+    $allowed_types[] = $content_type->type;
+  }
+
+  // Не забываем и про комментарии.
+  $allowed_types[] = 'comment';
+
+  $form['batch_operation_content_types'] = array(
+    '#type' => 'checkboxes',
+    '#options' => drupal_map_assoc($allowed_types),
+    '#title' => 'Над какими типами проделать операцию',
+    '#required' => TRUE,
+  );
+
+  if (variable_get('indexisto_send_data', 0) && variable_get('indexisto_secret_api_key', 0)) {
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Выполнить',
+    );
+  }
+  else {
+    form_set_error('indexisto_batch_form', 'Для того чобы воспользоваться данной формой, необходимо включить отправку структурированных данных и указать ключ API.');
+  }
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * Перехватываем подтверждение формы батч операций.
+ */
+function indexisto_batch_form_submit($form, &$form_state) {
+  indexisto_batch_start($form, $form_state);
 }

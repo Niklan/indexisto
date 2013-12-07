@@ -43,6 +43,16 @@ function indexisto_menu() {
     'weight' => 1,
   );
 
+  $items['admin/config/search/indexisto/batch'] = array(
+    'title' => 'Bulk operations',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('indexisto_batch_form'),
+    'access arguments' => array('administer site settings'),
+    'file' => 'indexisto.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+  );
+
   return $items;
 }
 
@@ -281,7 +291,7 @@ function indexisto_comment_data_prepare($comment) {
     $node = node_load($comment->nid);
 
     // Путь алиас или системный.
-    $alias = drupal_get_path_alias('/node/'.$node->nid);
+    $alias = drupal_get_path_alias('/node/' . $node->nid);
     $values['_url'] = $alias . '#comment-' . $comment->cid;
 
     // Если задано содержимое.
@@ -324,4 +334,142 @@ function indexisto_send_data($data, $method = 'POST') {
 
   // Выполняем запрос.
   $result = drupal_http_request($request_url . '?code=' . $code, $options);
+}
+
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * Старт батча.
+ */
+function indexisto_batch_start($form, &$form_state) {
+  // Тип выбранной операции.
+  // 0 - обновление и\или добавление в индекс.
+  // 1 - удаление из индекса.
+  $operation_type_id = $form_state['values']['batch_operation_type'];
+
+  // Информация об операциях.
+  $operations = array(
+    0 => array(
+      'name' => 'Добавление и\или обновление индекса',
+      'function' => '_batch_indexisto_import',
+    ),
+    1 => array(
+      'name' => 'Удаление из индекса',
+      'function' => '_batch_indexisto_delete',
+    ),
+  );
+
+  // Над какими типами содержимого выполняем.
+  $operation_content_types = array();
+
+  // Добавляем в масив выбранные типы содержимого.
+  foreach ($form_state['values']['batch_operation_content_types'] as $type_name => $status) {
+    if ($status) {
+      $operation_content_types[] = $type_name;
+    }
+  }
+
+  // Подготовка батча
+  $batch = array(
+    'title' => $operations[$operation_type_id]['name'],
+    'operations' => array(
+      array($operations[$operation_type_id]['function'], array($operation_content_types)),
+    ),
+    'progress_message' => 'Статус операции: @current из @total.',
+    'error_message' => t('Error!'),
+    'finished' => 'indexisto_batch_finished',
+  );
+
+  batch_set($batch);
+}
+
+/**
+ * Добавляем данные в индекс.
+ */
+function _batch_indexisto_import($content_types, &$context) {
+  // Для каждого указанного типа.
+  foreach ($content_types as $type) {
+    // Если тип комметарий.
+    if ($type == 'comment') {
+
+    }
+    // Остальное всё ноды.
+    else {
+      // Получем все id нод нужного нам типа.
+      $nids = db_select('node', 'n')
+        ->fields('n', array('nid'))
+        ->fields('n', array('type'))
+        ->condition('n.type', $type)
+        ->execute()
+        ->fetchCol();
+
+      // Получаем количество нод.
+      if (empty($context['sandbox']['progress'])) {
+        // Текущее состояние.
+        $context['sandbox']['progress'] = 0;
+        // Всего.
+        $context['sandbox']['max'] = count($nids);
+        // Добавляем операцию в бд.
+        watchdog('import', 'import {$type}');
+      }
+
+      // Текущая итерация.
+      if (empty($context['sandbox']['iteration'])) {
+        $context['sandbox']['iteration'] = 0;
+      }
+
+      // Проверяем не закончился ли цикл.
+      if ($context['sandbox']['iteration'] < $context['sandbox']['max']) {
+        // Указываем сколько за один цикл проделывать операций, чтобы не
+        // положить сервер от нагрузки.
+        $limit = 10;
+
+        // Количество уже проделанных операций.
+        $counter = 0;
+
+        if ($context['sandbox']['progress'] != 0) {
+          $context['sandbox']['iteration'] = $context['sandbox']['iteration'] + $limit;
+        }
+
+        // Прогоняем наши ноды.
+        for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
+          // Грузим ноду и отсылаем.
+          $node = node_load($nids[$counter]);
+          indexisto_node_data_prepare($node);
+
+          // Указываем батчу что мы выполнили один продукт.
+          $context['sandbox']['progress']++;
+          $counter++;
+
+          // Выводим инфу для юзера.
+          $context['message'] = t('Now processing type of: %type', array('%type' => $type));
+          $context['results']['processed'] = $context['sandbox']['progress'];
+        }
+      }
+
+      if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+        $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+      }
+    }
+  }
+}
+
+/**
+ * @param $success
+ * @param $results
+ * @param $operations
+ *
+ * Сообщение результатов по окончанию.
+ */
+function indexisto_batch_finished($success, $results, $operations) {
+  if ($success) {
+    drupal_set_message('Выполнено');
+  }
+  else {
+    $error_operation = reset($operations);
+    drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
+  }
+  watchdog('import', 'import finished');
 }

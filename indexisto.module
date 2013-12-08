@@ -302,12 +302,12 @@ function indexisto_comment_data_prepare($comment) {
 
     // Если задано содержимое.
     $body = variable_get('indexisto_comments_body', '[comment:body]');
-    $body ? $values['_sumtext'] = token_replace($body, array('comment' => $comment), array('clear' => TRUE)) : FALSE;
+    $body ? $values['_sumtext'] = strip_tags(token_replace($body, array('comment' => $comment), array('clear' => TRUE))) : FALSE;
 
     // Финальная подготовка данных, а также удаления переносов и табуляции.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
-    indexisto_send_data($data);
+    return $data;
   }
 }
 
@@ -402,7 +402,11 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
   // Для каждого указанного типа.
   // Получем все id нод нужного нам типа.
   if ($is_comment) {
-
+    $cids = db_select('comment', 'c')
+      ->fields('c', array('cid'))
+      ->condition('c.status', 1)
+      ->execute()
+      ->fetchCol();
   }
   else {
     // Список всех id нод.
@@ -412,10 +416,7 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
       $nids_new = db_select('node', 'n')
         ->fields('n', array('nid'))
         ->fields('n', array('type'))
-        ->condition(
-          db_or()
-            ->condition('n.type', $content_type)
-        )
+        ->condition('n.type', $content_type)
         ->execute()
         ->fetchCol();
 
@@ -429,7 +430,7 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
     $context['sandbox']['progress'] = 0;
     // Всего.
     if ($is_comment) {
-
+      $context['sandbox']['max'] = count($cids);
     }
     else {
       $context['sandbox']['max'] = count($nids);
@@ -460,7 +461,9 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
     // Прогоняем наши данные.
     for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
       if ($is_comment) {
-
+        $comment = comment_load($cids[$counter]);
+        $data = indexisto_comment_data_prepare($comment);
+        indexisto_send_data($data, $operation_type);
       }
       else {
         // Грузим ноду и отсылаем.

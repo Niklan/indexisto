@@ -285,7 +285,11 @@ function indexisto_batch_form($form, &$form_state) {
     '#type' => 'checkboxes',
     '#options' => drupal_map_assoc($allowed_types),
     '#title' => 'Над какими типами проделать операцию',
-    '#required' => TRUE,
+  );
+
+  $form['batch_operation_comments'] = array(
+    '#type' => 'radio',
+    '#title' => 'Комментарии',
   );
 
   if (variable_get('indexisto_send_data', 0) && variable_get('indexisto_secret_api_key', 0)) {
@@ -308,5 +312,27 @@ function indexisto_batch_form($form, &$form_state) {
  * Перехватываем подтверждение формы батч операций.
  */
 function indexisto_batch_form_submit($form, &$form_state) {
-  indexisto_batch_start($form, $form_state);
+  // Если выбраны какие-либо типых содержимого.
+  $is_content = FALSE;
+  foreach ($form_state['values']['batch_operation_content_types'] as $types) {
+    if ($types != '0') {
+      $is_content = TRUE;
+    }
+  }
+
+  $is_comment = $form_state['values']['batch_operation_comments'] == 'on' ? TRUE : FALSE;
+
+  // Если выбраны и комментарии и какой-либо тип содержимого, не пропускаем.
+  if ($is_comment && $is_content) {
+    drupal_set_message('Пожалуйста выберите либо содержимые, либо коментарии.', 'error');
+  }
+  // Если комментарии, то надо подкорректировать данные.
+  elseif ($is_comment && !$is_content) {
+    $form_state['values']['batch_operation_content_types'] = array('comment' => 'comment');
+    indexisto_batch_start($form, $form_state);
+  }
+  else {
+    indexisto_batch_start($form, $form_state);
+  }
+
 }

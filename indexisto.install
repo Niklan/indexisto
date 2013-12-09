@@ -5,6 +5,16 @@
  */
 
 /**
+ * Используем hook_install().
+ *
+ * Устанавливаем параметры после установки модуля.
+ */
+function indexisto_install() {
+  // Устанавливаем что юзер первый раз.
+  variable_set('indexisto_first_time', TRUE);
+}
+
+/**
  * Используем hook_uninstall().
  *
  * Удаляем всю нашу информацию.

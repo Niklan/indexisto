@@ -336,3 +336,135 @@ function indexisto_batch_form_submit($form, &$form_state) {
   }
 
 }
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * Форма для первой активации.
+ */
+function indexisto_settings_first_time($form, &$form_state) {
+  $form = array();
+
+  $form['register'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Регистрация',
+    '#description' => 'Если у вас еще нет аккаунта в indexisto, вы можете указать здесь свои данные и для вас автоматически будет создан аккаунт, поисковый индекс и все настройки для корректной работы модуля.',
+  );
+
+  $form['register']['register_agree'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Я хочу зарегистрировать аккаунт.',
+    '#description' => 'Отметив данное поле, для вас будет создан аккаунт с настройками с использованием указанных ниже данных.',
+  );
+
+  $form['register']['register_email'] = array(
+    '#type' => 'textfield',
+    '#title' => 'E-Mail',
+    '#description' => 'Укажите E-Mail на который создать аккаунт.',
+    '#default_value' => variable_get('site_mail', ''),
+  );
+
+  $form['register']['register_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Секретный ключ',
+    '#description' => 'Укажите ключ, который будет использоваться в качестве секрета для индекса.',
+    '#default_value' => drupal_random_key('15'),
+  );
+
+  $form['auth'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Авторизация',
+    '#description' => 'Если у вас есть уже настроенный индекс и аккаунт на indexisto, заполните соответствующие поля.',
+  );
+
+  $form['auth']['auth_agree'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Я хочу использовать уже существующие настройки.',
+    '#description' => 'Отметив данное поле, мы будем использовать существующие настройки. Вы сможете поправить их в дальнейшем.',
+  );
+
+  $form['auth']['index_id'] = array(
+    '#type' => 'textfield',
+    '#title' => 'ID поисковой системы',
+    '#description' => 'Укажите ID вашей поисковой системы.',
+    '#default_value' => variable_get('indexisto_index_id', ''),
+    '#size' => 60,
+    '#maxlength' => 128,
+  );
+
+  $form['auth']['auth_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Секретный ключ',
+    '#description' => 'Укажите ключ, который будет использоваться в качестве секрета для индекса.',
+    '#default_value' => '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Продолжить',
+  );
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * ПОдверждение формы перовй активации.
+ */
+function indexisto_settings_first_time_submit($form, &$form_state) {
+  // Пользователь желает зарегистрироваться.
+  $is_register = $form_state['values']['register_agree'];
+
+  // Пользователь желает авторизоваться.
+  $is_auth = $form_state['values']['auth_agree'];
+
+  // Надо что-то одно.
+  if ($is_auth && $is_register) {
+    drupal_set_message('Пожалуйста решитесь, вы хотите авторизоваться или зарегистрироваться.', 'error');
+  }
+  // Надо хоть что-то.
+  elseif (!$is_auth && !$is_register) {
+    drupal_set_message('Пожалуйста выберите, вы хотите зарегистрироваться или спользовать уже существующие данные.', 'error');
+  }
+
+  // Если пользователь хочет зарегистрироваться.
+  if ($is_register && !$is_auth) {
+    $email = $form_state['values']['register_email'];
+    $secret = $form_state['values']['register_secret'];
+
+    if (empty($email) || empty($secret)) {
+      drupal_set_message('Поля E-Mail и секрет обязательны для заполнения', 'error');
+    }
+    else {
+      drupal_set_message('ok');
+    }
+  }
+
+  // Если пользователь хочет авторизоваться.
+  if ($is_auth && !$is_register) {
+    $index_id = $form_state['values']['index_id'];
+    $secret = $form_state['values']['auth_secret'];
+
+    // Достаточно одного index_id.
+    if (empty($index_id)) {
+      drupal_set_message('Для авторизации нужно указать как минимум ID индекса.', 'error');
+    }
+    else {
+      variable_set('indexisto_index_id', $index_id);
+
+      // Если еще указан секрет, то мы включаем отсылку данных.
+      if (!empty($secret)) {
+        variable_set('indexisto_send_data', 1);
+        variable_set('indexisto_secret_api_key', $secret);
+      }
+
+      // Снимаем метку "первого раза".
+      variable_set('indexisto_first_time', FALSE);
+      // Сбрасываем кэш меню чтобы появились нужные формы.
+      menu_rebuild();
+    }
+  }
+}

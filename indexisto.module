@@ -13,45 +13,54 @@ define('INDEXISTO_DEFAULT_STYLES', 'outline-color: transparent;outline: none;bac
  * Создаем страницу с настройками поиска.
  */
 function indexisto_menu() {
+  $is_first_time = variable_get('indexisto_first_time', TRUE);
+
+  // Если первый раз, то мы отображаем другую форму.
+  $settings = $is_first_time ? 'indexisto_settings_first_time' : 'indexisto_settings_form';
+
   $items['admin/config/search/indexisto'] = array(
     'title' => 'Indexisto search',
     'description' => 'Indexisto search settings',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('indexisto_settings_form'),
+    'page arguments' => array($settings),
     'access arguments' => array('administer site configuration'),
     'file' => 'indexisto.admin.inc',
   );
 
+
   $items['admin/config/search/indexisto/settings'] = array(
     'title' => 'Indexisto search settings',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('indexisto_settings_form'),
+    'page arguments' => array($settings),
     'access arguments' => array('administer site configuration'),
     'file' => 'indexisto.admin.inc',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => 0,
   );
 
-  $items['admin/config/search/indexisto/content_settings'] = array(
-    'title' => 'Content settings',
-    'description' => 'Позволяет тонко настроить отдачу материалов в индекс.',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('indexisto_content_settings'),
-    'access arguments' => array('administer site configuration'),
-    'file' => 'indexisto.admin.inc',
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 1,
-  );
+  // Мы не показываем настройки пока пользователь не пройдет первые шаги.
+  if (!$is_first_time) {
+    $items['admin/config/search/indexisto/content_settings'] = array(
+      'title' => 'Content settings',
+      'description' => 'Позволяет тонко настроить отдачу материалов в индекс.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('indexisto_content_settings'),
+      'access arguments' => array('administer site configuration'),
+      'file' => 'indexisto.admin.inc',
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 1,
+    );
 
-  $items['admin/config/search/indexisto/batch'] = array(
-    'title' => 'Bulk operations',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('indexisto_batch_form'),
-    'access arguments' => array('administer site settings'),
-    'file' => 'indexisto.admin.inc',
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 2,
-  );
+    $items['admin/config/search/indexisto/batch'] = array(
+      'title' => 'Bulk operations',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('indexisto_batch_form'),
+      'access arguments' => array('administer site settings'),
+      'file' => 'indexisto.admin.inc',
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 2,
+    );
+  }
 
   return $items;
 }

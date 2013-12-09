@@ -6,7 +6,7 @@
  * http://indexisto.com/
  */
 define('INDEXISTO_DEFAULT_STYLES', 'outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;');
-
+define('INDEXISTO_INDEX_DOMAIN_NAME', 'http://' . $_SERVER['SERVER_NAME']);
 /**
  * Используем hook_menu().
  *
@@ -84,13 +84,15 @@ function indexisto_block_info() {
 }
 
 /**
- * Используем hook_block_view_alter().
+ * Используем hook_block_view().
  *
  * Мы перехватываем обработку вывода блока и пишем в него нужный код.
  */
-function indexisto_block_view_alter(&$data, $block) {
+function indexisto_block_view($delta) {
+  $block = array();
+
   // Ловим наш блок.
-  if ($block->delta == 'indexisto_search') {
+  if ($delta == 'indexisto_search') {
     $index_id = variable_get('indexisto_index_id');
     // Автозаполнение.
     variable_get('indexisto_autocomplete', FALSE) ? $autocomplete = 'on' : $autocomplete = 'off';
@@ -100,7 +102,7 @@ function indexisto_block_view_alter(&$data, $block) {
     // Стили ипута.
     $styles = variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES);
 
-    $data['content'] = "<input autocomplete='{$autocomplete}'  autocorrect='{$autocorrect}' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='{$styles}' type='text' />";
+    $block['content'] = "<input autocomplete='{$autocomplete}'  autocorrect='{$autocorrect}' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='{$styles}' type='text' />";
   }
 
   return $block;
@@ -112,7 +114,7 @@ function indexisto_block_view_alter(&$data, $block) {
  * При подготовке страницы мы цепляем JS файл.
  */
 function indexisto_preprocess_html(&$variables) {
-  drupal_add_js("http://servant.indexisto.com/files/searchbox/searchbox.nocache.js?type=edit");
+  drupal_add_js('http://servant.indexisto.com/files/searchbox/searchbox.nocache.js?type=edit', 'external');
 }
 
 /**
@@ -171,7 +173,7 @@ function indexisto_node_data_prepare($node) {
       '_id' => $node->nid,
       'created' => $node->created,
       '_subtype' => $node->type,
-      '_url' => $node->path['source'],
+      '_url' =>  INDEXISTO_INDEX_DOMAIN_NAME . 'node/' . $node->nid,
     );
 
     // Количество комментариев.
@@ -181,7 +183,11 @@ function indexisto_node_data_prepare($node) {
     // Перезаписываем системный URL.
     if (variable_get('indexisto_path_aliases', 1)) {
       if (!empty($node->path['alias'])) {
-        $values['_url'] = 'http://' . $_SERVER['SERVER_NAME'] . '/' . $node->path['alias'];
+        $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $node->path['alias'];
+      }
+      else {
+        $alias = url('node/' . $node->nid);
+        $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $alias;
       }
     }
 
@@ -203,9 +209,11 @@ function indexisto_node_data_prepare($node) {
       preg_match_all('/\[([^\s\[\]:]*)([^\s\[\]]*)\]/x', $image, $matches);
       // Убираем двоеточие и получаем название поля с изображением.
       $image_field_name = str_replace(":", "", $matches[2][0]);
+      // Переводим нижние слеши в тире, ведь есть два вида токенов.
+      $image_field_name = str_replace("-", "_", $image_field_name);
 
       // Если указанное поле существует.
-      if (isset($node->{$image_field_name}['und'][0]['fid'])) {
+      if (!empty($node->{$image_field_name}['und'][0]['fid'])) {
         // Получаем ID первого изображения.
         $image_fid = $node->{$image_field_name}['und'][0]['fid'];
         // Грузим файл.
@@ -314,8 +322,8 @@ function indexisto_comment_data_prepare($comment) {
     $node = node_load($comment->nid);
 
     // Путь алиас или системный.
-    $alias = drupal_get_path_alias('/node/' . $node->nid);
-    $values['_url'] = $alias . '#comment-' . $comment->cid;
+    $alias = url('node/' . $node->nid);
+    $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $alias . '#comment-' . $comment->cid;
 
     // Если задано содержимое.
     $body = variable_get('indexisto_comments_body', '[comment:body]');
@@ -478,13 +486,13 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
     // Прогоняем наши данные.
     for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
       if ($is_comment) {
-        $comment = comment_load($cids[$counter]);
+        $comment = comment_load($cids[$i]);
         $data = indexisto_comment_data_prepare($comment);
         indexisto_send_data($data, $operation_type);
       }
       else {
         // Грузим ноду и отсылаем.
-        $node = node_load($nids[$counter]);
+        $node = node_load($nids[$i]);
         $data = indexisto_node_data_prepare($node);
         indexisto_send_data($data, $operation_type);
       }

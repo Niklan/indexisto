@@ -22,40 +22,31 @@ function indexisto_settings_form($form, &$form_state) {
     '#size' => 60,
     '#maxlength' => 128,
     '#required' => TRUE,
+    '#weight' => 0,
   );
 
-  $form['indexisto_autocomplete'] = array(
-    '#type' => 'checkbox',
-    '#title' => 'Автозаполнение',
-    '#description' => 'Отметьте если необходимо автозаполнение.',
-    '#default_value' => variable_get('indexisto_autocomplete', 0),
-  );
-
-  $form['indexisto_autocorrect'] = array(
-    '#type' => 'checkbox',
-    '#title' => 'Автокоррекция',
-    '#description' => 'Отметьте если необходимо автозаполнение.',
-    '#default_value' => variable_get('indexisto_autocorrect', 0),
-  );
-
-  $form['indexisto_placeholder'] = array(
+  // Секретный ключ
+  $form['indexisto_secret_api_key'] = array(
     '#type' => 'textfield',
-    '#title' => 'Текст в строке поиска',
-    '#description' => 'Текст который отображается до начала ввода поискового запроса.',
-    '#default_value' => variable_get('indexisto_placeholder', 'Начните ввод'),
-    '#size' => 60,
-    '#maxlength' => 128,
+    '#title' => 'Секретный ключ API',
+    '#default_value' => variable_get('indexisto_secret_api_key', ''),
+    '#weight' => 1,
     '#required' => TRUE,
   );
 
-  $form['indexisto_input_style'] = array(
-    '#type' => 'textfield',
-    '#title' => 'Инлайн стили для поля поиска',
-    '#description' => 'Укажите собственные стили, если это необходимо.',
-    '#default_value' => variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES),
-    '#size' => 60,
-    '#maxlength' => 1000,
-    '#required' => TRUE,
+  $form['indexisto_send_data'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Включить индексацию',
+    '#description' => 'Включаяет\отключает индексацию содержимого на сайте.',
+    '#default_value' => variable_get('indexisto_send_data', 0),
+    '#weight' => 2,
+  );
+
+  $form['indexisto_clear_index'] = array(
+    '#type' => 'submit',
+    '#value' => 'Очистить индекс',
+    '#weight' => 3,
+    '#submit' => array('indexisto_clear_index'),
   );
 
   return system_settings_form($form);
@@ -75,24 +66,6 @@ function indexisto_content_settings($form, &$form_state) {
 
   // Получаем все типы содержимого на сайте.
   $content_types = node_type_get_types();
-
-  $form['indexisto_send_data'] = array(
-    '#type' => 'checkbox',
-    '#title' => 'Отсылать структурированные данные',
-    '#description' => 'Включая данную опцию, при сохранении, изменении или удалении содержимого, на сервер API будут отсылаться структурированные данные, для более точного индексирования.',
-    '#default_value' => variable_get('indexisto_send_data', 0),
-    '#weight' => 0,
-  );
-
-  // Секретный ключ
-  $form['indexisto_secret_api_key'] = array(
-    '#type' => 'textfield',
-    '#title' => 'Секретный ключ API',
-    '#default_value' => variable_get('indexisto_secret_api_key', ''),
-    '#weight' => 1,
-    '#required' => TRUE,
-  );
-
 
   $form['indexisto_path_aliases'] = array(
     '#type' => 'checkbox',
@@ -166,7 +139,7 @@ function indexisto_content_settings($form, &$form_state) {
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_image'] = array(
       '#type' => 'textfield',
       '#title' => 'Изображение',
-      '#description' => 'Изображение. Рекомендуется [node:body].',
+      '#description' => 'Укажите поле с изображением.',
       '#default_value' => variable_get('indexisto_' . $content_type . '_image', ''),
       '#weight' => 3,
       '#token_insert' => TRUE,
@@ -270,6 +243,13 @@ function indexisto_batch_form($form, &$form_state) {
     '#description' => 'Выберите какие операции необходимо произвести.',
   );
 
+  $form['info'] = array(
+    '#type' => 'fieldset',
+    '#collapsible' => FALSE,
+    '#title' => 'Справка',
+    '#description' => 'Укажите над каким содержимым проделать операцию. Комментарии индексируются отдельно от содержимого.'
+  );
+
   // Доступные для операций типы.
   $allowed_types = array();
 
@@ -284,11 +264,12 @@ function indexisto_batch_form($form, &$form_state) {
   $form['batch_operation_content_types'] = array(
     '#type' => 'checkboxes',
     '#options' => drupal_map_assoc($allowed_types),
-    '#title' => 'Над какими типами проделать операцию',
+    '#title' => 'Типы содержимого',
   );
 
   $form['batch_operation_comments'] = array(
-    '#type' => 'radio',
+    '#type' => 'checkboxes',
+    '#options' => drupal_map_assoc(array('comments')),
     '#title' => 'Комментарии',
   );
 
@@ -320,11 +301,14 @@ function indexisto_batch_form_submit($form, &$form_state) {
     }
   }
 
-  $is_comment = $form_state['values']['batch_operation_comments'] == 'on' ? TRUE : FALSE;
+  $is_comment = $form_state['values']['batch_operation_comments']['comments'] ? TRUE : FALSE;
 
   // Если выбраны и комментарии и какой-либо тип содержимого, не пропускаем.
   if ($is_comment && $is_content) {
-    drupal_set_message('Пожалуйста выберите либо содержимые, либо коментарии.', 'error');
+    drupal_set_message('Пожалуйста выберите либо содержимое, либо коментарии.', 'error');
+  }
+  elseif (!$is_comment && !$is_content) {
+    drupal_set_message('Пожалуйста выберите либо содержимое, либо коментарии.', 'error');
   }
   // Если комментарии, то надо подкорректировать данные.
   elseif ($is_comment && !$is_content) {
@@ -467,4 +451,34 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
       menu_rebuild();
     }
   }
+}
+
+
+/**
+ * Настройка стилей для поиска.
+ */
+function indexisto_style($form, &$form_state) {
+  $form = array();
+
+  $form['indexisto_placeholder'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Текст в строке поиска',
+    '#description' => 'Текст который отображается до начала ввода поискового запроса.',
+    '#default_value' => variable_get('indexisto_placeholder', 'Начните ввод'),
+    '#size' => 60,
+    '#maxlength' => 128,
+    '#required' => TRUE,
+  );
+
+  $form['indexisto_input_style'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Инлайн стили для поля поиска',
+    '#description' => 'Укажите собственные стили, если это необходимо.',
+    '#default_value' => variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES),
+    '#size' => 60,
+    '#maxlength' => 1000,
+    '#required' => TRUE,
+  );
+
+  return system_settings_form($form);
 }

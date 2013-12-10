@@ -257,6 +257,13 @@ function indexisto_node_data_prepare($node) {
     // Финальная подготовка данных, а также удаления переносов и табуляции.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
+    // Создаем собственный хук hook_indexisto_node_data_prepare_alter().
+    // Мы не будем ничего делать если его никто не использует.
+    if (sizeof(module_implements('indexisto_node_data_prepare_alter')) > 0) {
+      // Если его вызывали то отдаем данные.
+      $data = module_invoke_all('indexisto_node_data_prepare_alter', $data);
+    }
+
     // Возвращаем данные.
     return $data;
   }
@@ -331,6 +338,13 @@ function indexisto_comment_data_prepare($comment) {
 
     // Финальная подготовка данных, а также удаления переносов и табуляции.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
+
+    // Создаем собственный хук hook_indexisto_comment_data_prepare_alter().
+    // Мы не будем ничего делать если его никто не использует.
+    if (sizeof(module_implements('indexisto_comment_data_prepare_alter')) > 0) {
+      // Если его вызывали то отдаем данные.
+      $data = module_invoke_all('indexisto_comment_data_prepare_alter', $data);
+    }
 
     return $data;
   }

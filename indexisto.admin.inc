@@ -423,6 +423,7 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
       drupal_set_message('Поля E-Mail и секрет обязательны для заполнения', 'error');
     }
     else {
+      // @TODO register.
       drupal_set_message('ok');
     }
   }

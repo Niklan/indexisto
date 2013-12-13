@@ -62,7 +62,7 @@ function indexisto_content_settings($form, &$form_state) {
   $form = array();
 
   // Мы оповещаем пользователя о том, что настройки могут ухудшить ситуацию.
-  drupal_set_message('Данные настройки предназначены для продвинутых пользователей. Если вы не пониманимаете что они делают или как ими пользоваться, пожалуйста, не включайте отсылку данных, так как это может навредить.', 'warning', TRUE);
+  drupal_set_message('Данные настройки предназначены для продвинутых пользователей. Если вы не пониманимаете что они делают или как ими пользоваться, пожалуйста, ничего не меняйте, так как это может навредить.', 'warning', TRUE);
 
   // Получаем все типы содержимого на сайте.
   $content_types = node_type_get_types();
@@ -130,7 +130,7 @@ function indexisto_content_settings($form, &$form_state) {
       '#type' => 'textfield',
       '#title' => 'Общее содержимое',
       '#description' => 'Сборка всех контентных данных в единое место, по ним будет производиться поиск. Рекомендуется вставка содержимого, тегов и прочих контентовых данных.',
-      '#default_value' => variable_get('indexisto_' . $content_type . '_sumtext', '[node:body]'),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_sumtext', '[node:body] [node:field-tags]'),
       '#weight' => 2,
       '#token_insert' => TRUE,
     );
@@ -140,7 +140,7 @@ function indexisto_content_settings($form, &$form_state) {
       '#type' => 'textfield',
       '#title' => 'Изображение',
       '#description' => 'Укажите поле с изображением.',
-      '#default_value' => variable_get('indexisto_' . $content_type . '_image', ''),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_image', '[node:field-image]'),
       '#weight' => 3,
       '#token_insert' => TRUE,
     );
@@ -150,7 +150,7 @@ function indexisto_content_settings($form, &$form_state) {
       '#type' => 'textfield',
       '#title' => 'Теги',
       '#description' => 'Укажите поле с тегами.',
-      '#default_value' => variable_get('indexisto_' . $content_type . '_tags', ''),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_tags', '[node:field-tags]'),
       '#weight' => 4,
       '#token_insert' => TRUE,
     );

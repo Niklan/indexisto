@@ -567,5 +567,5 @@ function indexisto_batch_finished($success, $results, $operations) {
  * Очищаем индекс полностью.
  */
 function indexisto_clear_index() {
-  // do
+  // @TODO add clear index url.
 }

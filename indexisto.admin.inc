@@ -423,8 +423,36 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
       drupal_set_message('Поля E-Mail и секрет обязательны для заполнения', 'error');
     }
     else {
-      // @TODO register.
-      drupal_set_message('ok');
+      $options = array(
+        'method' => 'POST',
+      );
+
+      $host = INDEXISTO_INDEX_DOMAIN_NAME;
+      $email = $form_state['values']['register_email'];
+      $secret = $form_state['values']['register_secret'];
+
+      $request_url = 'http://adminpanel.indexisto.com/adminpanel/apireg.rpc?host=' . $host . '&email=' . $email . '&secret=' . $secret;
+      $result = drupal_http_request($request_url, $options);
+
+      // Если всё хорошо, то хорошо.
+      if ($result->code == 200) {
+        // Включаем отсылку данных.
+        if (!empty($secret) && !empty($result->data)) {
+          variable_set('indexisto_send_data', 1);
+          variable_set('indexisto_secret_api_key', $secret);
+          variable_set('indexisto_index_id', $result->data);
+        }
+
+        // Снимаем метку "первого раза".
+        variable_set('indexisto_first_time', FALSE);
+        // Сбрасываем кэш меню чтобы появились нужные формы.
+        menu_rebuild();
+        // Поздравляем с успехом.
+        drupal_set_message('Вы успешно прошли регистрацию на indexisto', 'status');
+      }
+      else {
+        drupal_set_message('Что-то пошло не так с регистрацией нового аккаунта. Возможно у вас уже есть аккаунт и вам стоит автороизоваться.', 'error');
+      }
     }
   }
 

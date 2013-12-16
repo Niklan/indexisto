@@ -1,26 +1,26 @@
 <?php
 /**
  * @file
- * Содержит необходимые операции при установки и удалении модуля.
+ * After enable and uninstall module.
  */
 
 /**
- * Используем hook_install().
+ * Implements hook_install().
  *
- * Устанавливаем параметры после установки модуля.
+ * Set up data after enable a module.
  */
 function indexisto_install() {
-  // Устанавливаем что юзер первый раз.
+  // Set 'first time' mark.
   variable_set('indexisto_first_time', TRUE);
 }
 
 /**
- * Используем hook_uninstall().
+ * Implements hook_uninstall().
  *
- * Удаляем всю нашу информацию.
+ * Remove our information.
  */
 function indexisto_uninstall() {
-  // Удалчем все наши настройки и чистим кеш.
+  // Remove all our variables and clear cache.
   db_query("DELETE FROM {variable} WHERE name LIKE 'indexisto_%'");
   cache_clear_all('variables', 'cache');
 }

@@ -1,23 +1,19 @@
 <?php
 /**
  * @file
- * Административный интерфейс модуля.
+ * Administrative interface..
  */
 
 /**
- * @param $form
- * @param $form_state
- * @return mixed
- *
- * Форма базовой настройки модуля.
+ * Basic settings form.
  */
 function indexisto_settings_form($form, &$form_state) {
   $form = array();
 
   $form['indexisto_index_id'] = array(
     '#type' => 'textfield',
-    '#title' => 'ID поисковой системы',
-    '#description' => 'Укажите ID вашей поисковой системы.',
+    '#title' => t('Search index ID'),
+    '#description' => t('ID of your search index.'),
     '#default_value' => variable_get('indexisto_index_id', ''),
     '#size' => 60,
     '#maxlength' => 128,
@@ -25,10 +21,10 @@ function indexisto_settings_form($form, &$form_state) {
     '#weight' => 0,
   );
 
-  // Секретный ключ
+  // Secret key.
   $form['indexisto_secret_api_key'] = array(
     '#type' => 'textfield',
-    '#title' => 'Секретный ключ API',
+    '#title' => t('API secret'),
     '#default_value' => variable_get('indexisto_secret_api_key', ''),
     '#weight' => 1,
     '#required' => TRUE,
@@ -36,56 +32,46 @@ function indexisto_settings_form($form, &$form_state) {
 
   $form['indexisto_send_data'] = array(
     '#type' => 'checkbox',
-    '#title' => 'Включить индексацию',
-    '#description' => 'Включаяет\отключает индексацию содержимого на сайте.',
+    '#title' => t('Enable indexation'),
+    '#description' => t('On\off content indexation.'),
     '#default_value' => variable_get('indexisto_send_data', 0),
     '#weight' => 2,
-  );
-
-  $form['indexisto_clear_index'] = array(
-    '#type' => 'submit',
-    '#value' => 'Очистить индекс',
-    '#weight' => 3,
-    '#submit' => array('indexisto_clear_index'),
   );
 
   return system_settings_form($form);
 }
 
 /**
- * @param $form
- * @param $form_state
- *
- * Детальная настройка под контент.
+ * Content settings for indexation.
  */
 function indexisto_content_settings($form, &$form_state) {
   $form = array();
 
-  // Мы оповещаем пользователя о том, что настройки могут ухудшить ситуацию.
-  drupal_set_message('Данные настройки предназначены для продвинутых пользователей. Если вы не пониманимаете что они делают или как ими пользоваться, пожалуйста, ничего не меняйте, так как это может навредить.', 'warning', TRUE);
+  // We warn user, cuz change this settings can broke indexation.
+  drupal_set_message(t('These settings are for advanced users. If you do not understand what they do or how to use them, please do not change anything, since it can hurt.'), 'warning', TRUE);
 
-  // Получаем все типы содержимого на сайте.
+  // Get all content types.
   $content_types = node_type_get_types();
 
   $form['indexisto_path_aliases'] = array(
     '#type' => 'checkbox',
-    '#title' => 'По возможности использовать синонимы',
-    '#description' => 'Если выключить, то будут отсылаться системные url вида /node/1.',
+    '#title' => t('Use path aliases'),
+    '#description' => t("Enable this option for using path aliases for URL's."),
     '#default_value' => variable_get('indexisto_path_aliases', 1),
     '#weight' => 2,
   );
 
-  // Типы содержимого.
+  // Content types.
   $form['content_types'] = array(
     '#type' => 'fieldset',
-    '#title' => 'Типы содержимого',
+    '#title' => t('Content types'),
     '#weight' => 3,
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
 
   foreach ($content_types as $content_type => $content_type_info) {
-    // Генерируем основную обертку для настроек определенного типа содержимого.
+    // Generate main fieldset for each content type.
     $form['content_types'][$content_type] = array(
       '#type' => 'fieldset',
       '#title' => $content_type_info->name . ' (' . $content_type . ')',
@@ -94,68 +80,68 @@ function indexisto_content_settings($form, &$form_state) {
       '#collapsed' => TRUE,
     );
 
-    // Отсылать ли данные по данному типу содержимому или нет
-    // 0 - отсылать.
-    // 1 - запрет на отсылку.
+    // Send data of current content type or not.
+    // 0 - send enabled.
+    // 1 - disabled.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_send_data'] = array(
       '#type' => 'checkbox',
-      '#title' => 'Запретить индексацию данного типа содержимого',
-      '#description' => 'Данный тип материала не попадет в индекс.',
+      '#title' => t('Block this content type for indexation.'),
+      '#description' => t('This content type will not be indexed.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_send_data', 0),
       '#weight' => -1,
     );
 
-    // Поле для заголовка.
+    // Title field.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_title'] = array(
       '#type' => 'textfield',
-      '#title' => 'Заголовок содержимого',
-      '#description' => 'Возвращаемый заголовок содержимого.',
+      '#title' => t('Content title'),
+      '#description' => t('Returns content title.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_title', '[node:title]'),
       '#weight' => 0,
       '#token_insert' => TRUE,
     );
 
-    // Содержимое.
+    // Content.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_body'] = array(
       '#type' => 'textfield',
-      '#title' => 'Содержимое',
-      '#description' => 'Содержание. Рекомендуется [node:body].',
+      '#title' => t('Content'),
+      '#description' => t('Main content of this content type.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_body', '[node:body]'),
       '#weight' => 1,
       '#token_insert' => TRUE,
     );
 
-    // Общее содержимое.
+    // Summary text.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_sumtext'] = array(
       '#type' => 'textfield',
-      '#title' => 'Общее содержимое',
-      '#description' => 'Сборка всех контентных данных в единое место, по ним будет производиться поиск. Рекомендуется вставка содержимого, тегов и прочих контентовых данных.',
+      '#title' => t('Summary content'),
+      '#description' => t('In this field we add all needed content data from current content-type. This data will be used for search.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_sumtext', '[node:body] [node:field-tags]'),
       '#weight' => 2,
       '#token_insert' => TRUE,
     );
 
-    // Изображение.
+    // Image.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_image'] = array(
       '#type' => 'textfield',
-      '#title' => 'Изображение',
-      '#description' => 'Укажите поле с изображением.',
+      '#title' => t('Image'),
+      '#description' => t('Main image for search results.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_image', '[node:field-image]'),
       '#weight' => 3,
       '#token_insert' => TRUE,
     );
 
-    // Теги.
+    // Tags.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_tags'] = array(
       '#type' => 'textfield',
-      '#title' => 'Теги',
-      '#description' => 'Укажите поле с тегами.',
+      '#title' => t('Tags'),
+      '#description' => t('Field with tags of current content type.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_tags', '[node:field-tags]'),
       '#weight' => 4,
       '#token_insert' => TRUE,
     );
 
-    // Добавляем списки токенов.
+    // Add token list.
     $form['content_types'][$content_type]['token_help'] = array(
       '#title' => t('Replacement patterns'),
       '#type' => 'fieldset',
@@ -172,36 +158,36 @@ function indexisto_content_settings($form, &$form_state) {
     );
   }
 
-  // Комментарии.
+  // Comments.
   $form['comments'] = array(
     '#type' => 'fieldset',
-    '#title' => 'Комментарии',
+    '#title' => t('Comments'),
     '#weight' => 4,
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
 
-  // Запрет индексации.
-  // 0 - разрешено.
-  // 1 - запрещено.
+  // Block comment from indexation.
+  // 0 - allowed.
+  // 1 - blocked.
   $form['comments']['indexisto_comments_send_data'] = array(
     '#type' => 'checkbox',
-    '#title' => 'Запретить индексацию комментариев.',
-    '#description' => 'Данный тип материала не попадет в индекс.',
+    '#title' => t('Disallow comments from indexation.'),
+    '#description' => t('Comments will not be indexed.'),
     '#default_value' => variable_get('indexisto_comments_send_data', 0),
     '#weight' => -1,
   );
 
   $form['comments']['indexisto_comments_body'] = array(
     '#type' => 'textfield',
-    '#title' => 'Содержимое комментария',
-    '#description' => 'Содержание. Рекомендуется [comment:body].',
+    '#title' => t('Comment content'),
+    '#description' => t('Main content of the comment.'),
     '#default_value' => variable_get('indexisto_comments_body', '[comment:body]'),
     '#weight' => 1,
     '#token_insert' => TRUE,
   );
 
-  // Добавляем списки токенов.
+  // Add token list.
   $form['comments']['token_help'] = array(
     '#title' => t('Replacement patterns'),
     '#type' => 'fieldset',
@@ -221,42 +207,39 @@ function indexisto_content_settings($form, &$form_state) {
 }
 
 /**
- * @param $form
- * @param $form_state
- *
- * Настройка батч операций.
+ * Settings for batch operations.
  */
 function indexisto_batch_form($form, &$form_state) {
   $form = array();
 
-  // Типы наших операций.
+  // Operation types.
   $operation_types = array(
-    0 => 'Добавление и\или обновление в индекс',
-    1 => 'Удаление из индекса'
+    0 => t('Add\update index data.'),
+    1 => t('Remove from index.'),
   );
 
   $form['batch_operation_type'] = array(
     '#type' => 'radios',
-    '#title' => 'Тип операции на выполнение',
+    '#title' => t('Operation type'),
     '#default_value' => 0,
     '#options' => $operation_types,
-    '#description' => 'Выберите какие операции необходимо произвести.',
+    '#description' => t('Which operation will be performed.'),
   );
 
   $form['info'] = array(
     '#type' => 'fieldset',
     '#collapsible' => FALSE,
-    '#title' => 'Справка',
-    '#description' => 'Укажите над каким содержимым проделать операцию. Комментарии индексируются отдельно от содержимого.'
+    '#title' => t('Help'),
+    '#description' => t('Choose content for doing operation. Comments are indexed separately from the content.'),
   );
 
-  // Доступные для операций типы.
+  // Allowed types for operations.
   $allowed_types = array();
 
-  // Получаем все типы содержимого на сайте.
+  // Get all content types.
   $content_types = node_type_get_types();
 
-  // Добавляем в доступные типы все наши типы содержимого.
+  // Add all found content types to array;
   foreach ($content_types as $content_type) {
     $allowed_types[] = $content_type->type;
   }
@@ -264,36 +247,33 @@ function indexisto_batch_form($form, &$form_state) {
   $form['batch_operation_content_types'] = array(
     '#type' => 'checkboxes',
     '#options' => drupal_map_assoc($allowed_types),
-    '#title' => 'Типы содержимого',
+    '#title' => t('Content types'),
   );
 
   $form['batch_operation_comments'] = array(
     '#type' => 'checkboxes',
     '#options' => drupal_map_assoc(array('comments')),
-    '#title' => 'Комментарии',
+    '#title' => t('Comments'),
   );
 
   if (variable_get('indexisto_send_data', 0) && variable_get('indexisto_secret_api_key', 0)) {
     $form['submit'] = array(
       '#type' => 'submit',
-      '#value' => 'Выполнить',
+      '#value' => t('Submit'),
     );
   }
   else {
-    form_set_error('indexisto_batch_form', 'Для того чобы воспользоваться данной формой, необходимо включить отправку структурированных данных и указать ключ API.');
+    form_set_error('indexisto_batch_form', t('In order to use this form, you must enable the sending of structured data and specify the key API.'));
   }
 
   return $form;
 }
 
 /**
- * @param $form
- * @param $form_state
- *
- * Перехватываем подтверждение формы батч операций.
+ * Submit of our batch form.
  */
 function indexisto_batch_form_submit($form, &$form_state) {
-  // Если выбраны какие-либо типых содержимого.
+  // Has selected content.
   $is_content = FALSE;
   foreach ($form_state['values']['batch_operation_content_types'] as $types) {
     if ($types != '0') {
@@ -303,14 +283,14 @@ function indexisto_batch_form_submit($form, &$form_state) {
 
   $is_comment = $form_state['values']['batch_operation_comments']['comments'] ? TRUE : FALSE;
 
-  // Если выбраны и комментарии и какой-либо тип содержимого, не пропускаем.
+  // If selected content and comments we return error.
   if ($is_comment && $is_content) {
-    drupal_set_message('Пожалуйста выберите либо содержимое, либо коментарии.', 'error');
+    drupal_set_message('Please select either the content types or comments.', 'error');
   }
   elseif (!$is_comment && !$is_content) {
-    drupal_set_message('Пожалуйста выберите либо содержимое, либо коментарии.', 'error');
+    drupal_set_message('Please select either the content types or comments', 'error');
   }
-  // Если комментарии, то надо подкорректировать данные.
+  // If comments, we must to adjust the data.
   elseif ($is_comment && !$is_content) {
     $form_state['values']['batch_operation_content_types'] = array('comment' => 'comment');
     indexisto_batch_start($form, $form_state);
@@ -322,56 +302,53 @@ function indexisto_batch_form_submit($form, &$form_state) {
 }
 
 /**
- * @param $form
- * @param $form_state
- *
- * Форма для первой активации.
+ * First time activation form.
  */
 function indexisto_settings_first_time($form, &$form_state) {
   $form = array();
 
   $form['register'] = array(
     '#type' => 'fieldset',
-    '#title' => 'Регистрация',
-    '#description' => 'Если у вас еще нет аккаунта в indexisto, вы можете указать здесь свои данные и для вас автоматически будет создан аккаунт, поисковый индекс и все настройки для корректной работы модуля.',
+    '#title' => t('Register'),
+    '#description' => t('If you do not have an account in indexisto, you can specify here for your information and you will automatically create an account, search index and all the settings for the correct operation of the module.'),
   );
 
   $form['register']['register_agree'] = array(
     '#type' => 'checkbox',
-    '#title' => 'Я хочу зарегистрировать аккаунт.',
-    '#description' => 'Отметив данное поле, для вас будет создан аккаунт с настройками с использованием указанных ниже данных.',
+    '#title' => t('I want to register an account'),
+    '#description' => t('Tick ​​this box to you account will be created automatically with all the necessary settings.'),
   );
 
   $form['register']['register_email'] = array(
     '#type' => 'textfield',
-    '#title' => 'E-Mail',
-    '#description' => 'Укажите E-Mail на который создать аккаунт.',
+    '#title' => t('E-Mail'),
+    '#description' => t('Specify the E-Mail which create an account.'),
     '#default_value' => variable_get('site_mail', ''),
   );
 
   $form['register']['register_secret'] = array(
     '#type' => 'textfield',
-    '#title' => 'Секретный ключ',
-    '#description' => 'Укажите ключ, который будет использоваться в качестве секрета для индекса.',
+    '#title' => t('Secret key'),
+    '#description' => t('Specify the key to be used as a secret for the index.'),
     '#default_value' => drupal_random_key('15'),
   );
 
   $form['auth'] = array(
     '#type' => 'fieldset',
-    '#title' => 'Авторизация',
-    '#description' => 'Если у вас есть уже настроенный индекс и аккаунт на indexisto, заполните соответствующие поля.',
+    '#title' => t('Authorization'),
+    '#description' => 'If you have already set up an account on the index and indexisto, fill in the appropriate fields.',
   );
 
   $form['auth']['auth_agree'] = array(
     '#type' => 'checkbox',
-    '#title' => 'Я хочу использовать уже существующие настройки.',
-    '#description' => 'Отметив данное поле, мы будем использовать существующие настройки. Вы сможете поправить их в дальнейшем.',
+    '#title' => t('I want to use existing settings.'),
+    '#description' => t('Tick ​​this box, we will use the existing settings. You will be able to correct them in the future.'),
   );
 
   $form['auth']['index_id'] = array(
     '#type' => 'textfield',
-    '#title' => 'ID поисковой системы',
-    '#description' => 'Укажите ID вашей поисковой системы.',
+    '#title' => t('ID search engine'),
+    '#description' => t('Specify the ID of your search engine.'),
     '#default_value' => variable_get('indexisto_index_id', ''),
     '#size' => 60,
     '#maxlength' => 128,
@@ -379,48 +356,45 @@ function indexisto_settings_first_time($form, &$form_state) {
 
   $form['auth']['auth_secret'] = array(
     '#type' => 'textfield',
-    '#title' => 'Секретный ключ',
-    '#description' => 'Укажите ключ, который будет использоваться в качестве секрета для индекса.',
+    '#title' => t('Secret key'),
+    '#description' => t('Specify the key to be used as a secret for the index.'),
     '#default_value' => '',
   );
 
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => 'Продолжить',
+    '#value' => t('Submit'),
   );
 
   return $form;
 }
 
 /**
- * @param $form
- * @param $form_state
- *
- * ПОдверждение формы перовй активации.
+ * First time settings form submit.
  */
 function indexisto_settings_first_time_submit($form, &$form_state) {
-  // Пользователь желает зарегистрироваться.
+  // User want to register.
   $is_register = $form_state['values']['register_agree'];
 
-  // Пользователь желает авторизоваться.
+  // User want to authorize.
   $is_auth = $form_state['values']['auth_agree'];
 
-  // Надо что-то одно.
+  // User must select only one of it.
   if ($is_auth && $is_register) {
-    drupal_set_message('Пожалуйста решитесь, вы хотите авторизоваться или зарегистрироваться.', 'error');
+    drupal_set_message(t('Please decide you want to log in or register.'), 'error');
   }
-  // Надо хоть что-то.
+  // User cant select nothing.
   elseif (!$is_auth && !$is_register) {
-    drupal_set_message('Пожалуйста выберите, вы хотите зарегистрироваться или спользовать уже существующие данные.', 'error');
+    drupal_set_message(t('Please decide you want to log in or register.'), 'error');
   }
 
-  // Если пользователь хочет зарегистрироваться.
+  // If user want to register.
   if ($is_register && !$is_auth) {
     $email = $form_state['values']['register_email'];
     $secret = $form_state['values']['register_secret'];
 
     if (empty($email) || empty($secret)) {
-      drupal_set_message('Поля E-Mail и секрет обязательны для заполнения', 'error');
+      drupal_set_message(t('E-Mail field and secret are required'), 'error');
     }
     else {
       $options = array(
@@ -434,49 +408,49 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
       $request_url = 'http://adminpanel.indexisto.com/adminpanel/apireg.rpc?host=' . $host . '&email=' . $email . '&secret=' . $secret;
       $result = drupal_http_request($request_url, $options);
 
-      // Если всё хорошо, то хорошо.
+      // If alright with request we finalize the data.
       if ($result->code == 200) {
-        // Включаем отсылку данных.
+        // Enable send data and specify default data.
         if (!empty($secret) && !empty($result->data)) {
           variable_set('indexisto_send_data', 1);
           variable_set('indexisto_secret_api_key', $secret);
           variable_set('indexisto_index_id', $result->data);
         }
 
-        // Снимаем метку "первого раза".
+        // Remove 'first time' installation mark.
         variable_set('indexisto_first_time', FALSE);
-        // Сбрасываем кэш меню чтобы появились нужные формы.
+        // Clear cache for new menu items.
         menu_rebuild();
-        // Поздравляем с успехом.
-        drupal_set_message('Вы успешно прошли регистрацию на indexisto', 'status');
+        // Congratulations.
+        drupal_set_message(t('You have successfully registered on indexisto.'), 'status');
       }
       else {
-        drupal_set_message('Что-то пошло не так с регистрацией нового аккаунта. Возможно у вас уже есть аккаунт и вам стоит автороизоваться.', 'error');
+        drupal_set_message(t('Something went wrong with the registration of a new account. Perhaps you already have an account and you should be logged.'), 'error');
       }
     }
   }
 
-  // Если пользователь хочет авторизоваться.
+  // If user already have an account.
   if ($is_auth && !$is_register) {
     $index_id = $form_state['values']['index_id'];
     $secret = $form_state['values']['auth_secret'];
 
-    // Достаточно одного index_id.
+    // We just need one index id.
     if (empty($index_id)) {
-      drupal_set_message('Для авторизации нужно указать как минимум ID индекса.', 'error');
+      drupal_set_message(t('For authorization must specify at least the index ID.'), 'error');
     }
     else {
       variable_set('indexisto_index_id', $index_id);
 
-      // Если еще указан секрет, то мы включаем отсылку данных.
+      // If secret specify too, we enable sending data.
       if (!empty($secret)) {
         variable_set('indexisto_send_data', 1);
         variable_set('indexisto_secret_api_key', $secret);
       }
 
-      // Снимаем метку "первого раза".
+      // Remove 'first time' mark.
       variable_set('indexisto_first_time', FALSE);
-      // Сбрасываем кэш меню чтобы появились нужные формы.
+      // Clear cache for new menu items.
       menu_rebuild();
     }
   }
@@ -484,16 +458,16 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
 
 
 /**
- * Настройка стилей для поиска.
+ * Style settings form.
  */
 function indexisto_style($form, &$form_state) {
   $form = array();
 
   $form['indexisto_placeholder'] = array(
     '#type' => 'textfield',
-    '#title' => 'Текст в строке поиска',
-    '#description' => 'Текст который отображается до начала ввода поискового запроса.',
-    '#default_value' => variable_get('indexisto_placeholder', 'Начните ввод'),
+    '#title' => t('Placeholder text'),
+    '#description' => t('The text that is displayed before entering the search query.'),
+    '#default_value' => variable_get('indexisto_placeholder', t('Start typing')),
     '#size' => 60,
     '#maxlength' => 128,
     '#required' => TRUE,
@@ -501,8 +475,8 @@ function indexisto_style($form, &$form_state) {
 
   $form['indexisto_input_style'] = array(
     '#type' => 'textfield',
-    '#title' => 'Инлайн стили для поля поиска',
-    '#description' => 'Укажите собственные стили, если это необходимо.',
+    '#title' => t('Inline CSS styles for search input'),
+    '#description' => t('Specify your own styles, if necessary.'),
     '#default_value' => variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES),
     '#size' => 60,
     '#maxlength' => 1000,

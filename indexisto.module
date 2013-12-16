@@ -1,21 +1,22 @@
 <?php
 /**
  * @file
- * Интеграция с поисковым сервисом Indexisto.
+ * Integration with Indexisto.
  *
  * http://indexisto.com/
  */
+
 define('INDEXISTO_DEFAULT_STYLES', 'outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;');
 define('INDEXISTO_INDEX_DOMAIN_NAME', 'http://' . $_SERVER['SERVER_NAME']);
 /**
- * Используем hook_menu().
+ * Implements hook_menu().
  *
- * Создаем страницу с настройками поиска.
+ * Create links in menu.
  */
 function indexisto_menu() {
   $is_first_time = variable_get('indexisto_first_time', TRUE);
 
-  // Если первый раз, то мы отображаем другую форму.
+  // If user has 'first time' mark we show another form.
   $settings = $is_first_time ? 'indexisto_settings_first_time' : 'indexisto_settings_form';
 
   $items['admin/config/search/indexisto'] = array(
@@ -27,7 +28,6 @@ function indexisto_menu() {
     'file' => 'indexisto.admin.inc',
   );
 
-
   $items['admin/config/search/indexisto/settings'] = array(
     'title' => 'Indexisto search settings',
     'page callback' => 'drupal_get_form',
@@ -38,11 +38,11 @@ function indexisto_menu() {
     'weight' => 0,
   );
 
-  // Мы не показываем настройки пока пользователь не пройдет первые шаги.
+  // We do not show the settings until user pass the first steps.
   if (!$is_first_time) {
     $items['admin/config/search/indexisto/content_settings'] = array(
       'title' => 'Content settings',
-      'description' => 'Позволяет тонко настроить отдачу материалов в индекс.',
+      'description' => 'Can tweak materials return to the index.',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('indexisto_content_settings'),
       'access arguments' => array('administer site configuration'),
@@ -76,14 +76,14 @@ function indexisto_menu() {
 }
 
 /**
- * Используем hook_block_info().
+ * Implements hook_block_info().
  *
- * Объявляем наш блок с полем поиска.
+ * Define our block with input.
  */
 function indexisto_block_info() {
   $blocks = array();
 
-  // Если не указан ID поискового индекса, мы не генерируем блок.
+  // If index id not st, we do not create block.
   if (variable_get('indexisto_index_id', FALSE)) {
     $blocks['indexisto_search'] = array(
       'info' => t('Indexisto search'),
@@ -94,18 +94,18 @@ function indexisto_block_info() {
 }
 
 /**
- * Используем hook_block_view().
+ * Implements hook_block_view().
  *
- * Мы перехватываем обработку вывода блока и пишем в него нужный код.
+ * Generaet content for our block.
  */
 function indexisto_block_view($delta) {
   $block = array();
 
-  // Ловим наш блок.
+  // Catch our block.
   if ($delta == 'indexisto_search') {
     $index_id = variable_get('indexisto_index_id');
     $placeholder = variable_get('indexisto_placeholder', 'Начните ввод');
-    // Стили ипута.
+    // Inline styles for input.
     $styles = variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES);
 
     $block['content'] = "<input autocomplete='off'  autocorrect='off' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='{$styles}' type='text' />";
@@ -115,18 +115,18 @@ function indexisto_block_view($delta) {
 }
 
 /**
- * Используем hook_preprocess_html().
+ * Implements hook_preprocess_html().
  *
- * При подготовке страницы мы цепляем JS файл.
+ * Attach our js file.
  */
 function indexisto_preprocess_html(&$variables) {
   drupal_add_js('http://servant.indexisto.com/files/searchbox/searchbox.nocache.js?type=edit', 'external');
 }
 
 /**
- * Используем hook_node_insert().
+ * Implements hook_node_insert().
  *
- * Перехватываем в момент добавления в базу.
+ * When nnode is added.
  */
 function indexisto_node_insert($node) {
   if ($node->status) {
@@ -136,49 +136,46 @@ function indexisto_node_insert($node) {
 }
 
 /**
- * Используем hook_node_update().
+ * Implements hook_node_update().
  *
- * Перехватываем в момент обновления содержимого.
+ * When node is updated.
  */
 function indexisto_node_update($node) {
   if ($node->status) {
     $data = indexisto_node_data_prepare($node);
     indexisto_send_data($data);
   }
-  // Если нода снята с публикации - удаляем из индекса.
+  // If not not published we remove it from index.
   else {
     indexisto_node_delete($node);
   }
 }
 
 /**
- * Используем hook_node_delete().
+ * Implements hook_node_delete().
  *
- * Перехватываем в момент удаления содержимого.
+ * When node is deleted.
  */
 function indexisto_node_delete($node) {
-  // Записываем id удаляемого содержимого.
+  // Id of deleted node.
   $values = array(
     '_id' => $node->nid,
   );
 
-  // Обрабатываем данные.
+  // Prepare data to send.
   $data = json_encode($values);
 
-  // Посылаем запрос что удалили.
+  // Send data for deletion.
   indexisto_send_data($data, 'DELETE');
 }
 
 /**
- * @param $node
- * @param $operation
- *
- * Подготовка данных для отсылки в api для нод.
+ * Prepare node data for sending into index.
  */
 function indexisto_node_data_prepare($node) {
-  // Если только это необходимо и не запрещено для текущей ноды.
+  // If send data enabled and this content type allowed to send data.
   if (variable_get('indexisto_send_data', 0) && !variable_get('indexisto_' . $node->type . '_send_data', 0)) {
-    // Передаем базовые настройки.
+    // Prepare base data.
     $values = array(
       '_id' => $node->nid,
       'created' => date("Y-m-d\\TH:i:s", $node->created),
@@ -186,11 +183,11 @@ function indexisto_node_data_prepare($node) {
       '_url' => INDEXISTO_INDEX_DOMAIN_NAME . 'node/' . $node->nid,
     );
 
-    // Количество комментариев.
+    // Comment count.
     isset($node->comment_count) ? $values['comments'] = $node->comment_count : FALSE;
 
-    // Подготовка URL материала.
-    // Перезаписываем системный URL.
+    // Prepare material URL.
+    // Change system url for alias.
     if (variable_get('indexisto_path_aliases', 1)) {
       if (!empty($node->path['alias'])) {
         $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $node->path['alias'];
@@ -201,44 +198,45 @@ function indexisto_node_data_prepare($node) {
       }
     }
 
-    // Если задан заголовок.
+    // If title set.
     $title = variable_get('indexisto_' . $node->type . '_title', '[node:title]');
     $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
 
-    // Если задано содержимое.
+    // If body set.
     $body = variable_get('indexisto_' . $node->type . '_body', '[node:body]');
     $body ? $values['body'] = token_replace($body, array('node' => $node), array('clear' => TRUE)) : FALSE;
 
-    // Если задано изображение.
+    // If image set.
     $image = variable_get('indexisto_' . $node->type . '_image', FALSE);
-    // К сожалению, токен с изображением обрабатывается не правильно, поэтому
-    // мы берем инициативу на себя. Мы из токена получаем название поля которое
-    // пользователь указал в качестве картинки, и тянем его значение на прямую
-    // из нашего содержимого.
+    // Unfortunately, the token with the image not handled properly, so we take
+    // the initiative. We get the name of the token field that the user has
+    // specified as a picture, and pull it straight on the value of our
+    // content.
     if ($image) {
       preg_match_all('/\[([^\s\[\]:]*)([^\s\[\]]*)\]/x', $image, $matches);
-      // Убираем двоеточие и получаем название поля с изображением.
+      // Remove the colon and get the name of the field with the image.
       $image_field_name = str_replace(":", "", $matches[2][0]);
-      // Переводим нижние слеши в тире, ведь есть два вида токенов.
+      // Replace the dash to underscores. Do not forget about Entity Token
+      // which the user can also specify.
       $image_field_name = str_replace("-", "_", $image_field_name);
 
-      // Если указанное поле существует.
+      // If this field has image.
       if (!empty($node->{$image_field_name}['und'][0]['fid'])) {
-        // Получаем ID первого изображения.
+        // Get file id of first image.
         $image_fid = $node->{$image_field_name}['und'][0]['fid'];
-        // Грузим файл.
+        // Load file information.
         $image_loaded = file_load($image_fid);
-        // Получаем URL.
+        // Create URL for image.
         $values['_image'] = file_create_url($image_loaded->uri);
       }
-      // Если нет картинки то пробуем найти первую в теле документа.
+      // If image not founded, we look in the body.
       elseif (!empty($values['body'])) {
         preg_match('/<img.+src=[\'"](?P<src>.+?)[\'"].*>/i', $values['body'], $image);
-        // Если есть домен в ссылке картинки, то тупо записываем.
+        // If image has domain name we write it.
         if ($image && preg_match('/^(http|https):\\/\\/([A-Z0-9][A-Z0-9_-]*(?:.[A-Z0-9][A-Z0-9_-]*)+):?(d+)?\\/?/i', $image['src'])) {
           $values['_image'] = $image['src'];
         }
-        // Ну а иначе добавляем.
+        // Or add our domain.
         elseif ($image) {
           $values['_image'] = 'http://' . $_SERVER['SERVER_NAME'] . $image['src'];
         }
@@ -246,46 +244,46 @@ function indexisto_node_data_prepare($node) {
     }
     elseif (!empty($values['body'])) {
       preg_match('/<img.+src=[\'"](?P<src>.+?)[\'"].*>/i', $values['body'], $image);
-      // Если есть домен в ссылке картинки, то тупо записываем.
+      // If image has domain name we write it.
       if ($image && preg_match('/^(http|https):\\/\\/([A-Z0-9][A-Z0-9_-]*(?:.[A-Z0-9][A-Z0-9_-]*)+):?(d+)?\\/?/i', $image['src'])) {
         $values['_image'] = $image['src'];
       }
-      // Ну а иначе добавляем.
+      // Or add our domain.
       elseif ($image) {
         $values['_image'] = 'http://' . $_SERVER['SERVER_NAME'] . $image['src'];
       }
     }
 
-    // Если заданы теги.
+    // If tags set.
     $tags = variable_get('indexisto_' . $node->type . '_tags', FALSE);
     $tags ? $values['tags'] = token_replace($tags, array('node' => $node), array('clear' => TRUE)) : FALSE;
 
-    // Sumtext
+    // Sumtext - all content data allowed for search.
     $sumtext = variable_get('indexisto_' . $node->type . '_sumtext', '[node:body]');
     $sumtext ? $values['_sumtext'] = token_replace($sumtext, array('node' => $node), array('clear' => TRUE)) : FALSE;
 
-    // Финальная подготовка данных, а также удаления переносов и табуляции.
+    // Remove tabs and transfers, all tags and write it in JSON format.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
-    // Создаем собственный хук hook_indexisto_node_data_prepare_alter().
-    // Мы не будем ничего делать если его никто не использует.
-    if (sizeof(module_implements('indexisto_node_data_prepare_alter')) > 0) {
-      // Если его вызывали то отдаем данные.
+    // Create own hook_indexisto_node_data_prepare_alter().
+    // If no one uses it, we do nothing.
+    if (count(module_implements('indexisto_node_data_prepare_alter')) > 0) {
+      // If called we give them data.
       $alter_data = module_invoke_all('indexisto_node_data_prepare_alter', $data);
       drupal_alter('indexisto_node_data_prepare_alter', $data);
-      // Берем измененные данные из массива.
+      // Give changed data.
       $data = $alter_data[0];
     }
 
-    // Возвращаем данные.
+    // Return prepared data information.
     return $data;
   }
 }
 
 /**
- * Используем hook_comment_insert().
+ * Implements hook_comment_insert().
  *
- * Перехватываем в момент добавления в базу.
+ * When new comment is added.
  */
 function indexisto_comment_insert($comment) {
   if ($comment->status) {
@@ -295,9 +293,9 @@ function indexisto_comment_insert($comment) {
 }
 
 /**
- * Используем hook_comment_update().
+ * Implements hook_comment_update().
  *
- * Перехватываем в момент обновления.
+ * Catch on update.
  */
 function indexisto_comment_update($comment) {
   if ($comment->status) {
@@ -307,30 +305,28 @@ function indexisto_comment_update($comment) {
 }
 
 /**
- * Используем hook_comment_delete().
+ * Implements hook_comment_delete().
  *
- * Перехватываем в момент удаления.
+ * When comment is deleted.
  */
 function indexisto_comment_delete($comment) {
-  // Записываем id удаляемого комментария.
+  // Write our comment id.
   $values = array(
     '_id' => $comment->cid,
   );
 
-  // Обрабатываем данные.
+  // Prepare data.
   $data = json_encode($values);
 
-  // Посылаем запрос что удалили.
+  // Send remove request.
   indexisto_send_data($data, 'DELETE');
 }
 
 /**
- * @param $comment
- *
- * Подготовка данных для отсылки в api для комментариев.
+ * Prepare comment data for sending in index.
  */
 function indexisto_comment_data_prepare($comment) {
-  // Если индексация комментариев разрешена (0).
+  // If user allow to index comments (0).
   if (!variable_get('indexisto_comments_send_data', 0)) {
     $values = array(
       '_id' => $comment->cid,
@@ -338,27 +334,27 @@ function indexisto_comment_data_prepare($comment) {
       '_subtype' => 'comments',
     );
 
-    // Загружаем ноду к которой комментарий.
+    // Load related node.
     $node = node_load($comment->nid);
 
-    // Путь алиас или системный.
+    // Write path.
     $alias = url('node/' . $node->nid);
     $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $alias . '#comment-' . $comment->cid;
 
-    // Если задано содержимое.
+    // If content is set.
     $body = variable_get('indexisto_comments_body', '[comment:body]');
     $body ? $values['_sumtext'] = strip_tags(token_replace($body, array('comment' => $comment), array('clear' => TRUE))) : FALSE;
 
-    // Финальная подготовка данных, а также удаления переносов и табуляции.
+    // Remove tabs and transfers, all tags and write it in JSON format.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
-    // Создаем собственный хук hook_indexisto_comment_data_prepare_alter().
-    // Мы не будем ничего делать если его никто не использует.
-    if (sizeof(module_implements('indexisto_comment_data_prepare_alter')) > 0) {
-      // Если его вызывали то отдаем данные.
+    // Create own indexisto_comment_data_prepare_alter().
+    // If no one uses it, we do nothing.
+    if (count(module_implements('indexisto_comment_data_prepare_alter')) > 0) {
+      // If called we give them data.
       $alter_data = module_invoke_all('indexisto_comment_data_prepare_alter', $data);
       drupal_alter('indexisto_comment_data_prepare_alter', $data);
-      // Берем измененные данные из массива.
+      // Give changed data.
       $data = $alter_data[0];
     }
 
@@ -367,10 +363,7 @@ function indexisto_comment_data_prepare($comment) {
 }
 
 /**
- * @param $data
- * @param $method
- *
- * Отправка данных в базу.
+ * Send data to indexisto.
  */
 function indexisto_send_data($data, $method = 'POST') {
   $api_url = 'http://api.indexisto.com';
@@ -379,13 +372,13 @@ function indexisto_send_data($data, $method = 'POST') {
   $indexid = '/' . variable_get('indexisto_index_id');
   $secret = variable_get('indexisto_secret_api_key');
 
-  // Создаем URL для отсылки данных.
+  // Generate request url.
   $request_url = $api_url . $api_version . $document . $indexid . '/default';
 
-  // Создаем URL для подписи данныех.
+  // Ur for sign.
   $sign_url = $api_version . $document . $indexid . '/default';
 
-  // Генерируем ключ для отсылки данных.
+  // Generate key for sending data.
   $code = md5($sign_url . $data . $secret);
 
   $options = array(
@@ -393,53 +386,53 @@ function indexisto_send_data($data, $method = 'POST') {
     'data' => $data,
   );
 
-  // Выполняем запрос.
+  // Do request.
   $result = drupal_http_request($request_url . '?code=' . $code, $options);
 }
 
 
 /**
- * @param $form
- * @param $form_state
- *
- * Старт батча.
+ * Batch start.
  */
 function indexisto_batch_start($form, &$form_state) {
-  // Тип выбранной операции.
-  // 0 - обновление и\или добавление в индекс.
-  // 1 - удаление из индекса.
+  // Operation type.
+  // 0 - update and adding.
+  // 1 - remove from index.
   $operation_type_id = $form_state['values']['batch_operation_type'];
   $operation_type_name = $operation_type_id ? 'DELETE' : 'POST';
 
-  // Информация об операциях.
+  // Operation information.
   $operations = array(
     0 => array(
-      'name' => 'Добавление и\или обновление индекса',
+      'name' => 'Add\remove to index',
       'function' => '_batch_indexisto_do',
     ),
     1 => array(
-      'name' => 'Удаление из индекса',
+      'name' => 'Remove from index',
       'function' => '_batch_indexisto_do',
     ),
   );
 
-  // Над какими типами содержимого выполняем.
+  // Which content types.
   $operation_content_types = array();
 
-  // Добавляем в масив выбранные типы содержимого.
+  // Add to our array all selected content types.
   foreach ($form_state['values']['batch_operation_content_types'] as $type_name => $status) {
     if ($status) {
       $operation_content_types[] = $type_name;
     }
   }
 
-  // Подготовка батча
+  // Batch prepare.
   $batch = array(
     'title' => $operations[$operation_type_id]['name'],
     'operations' => array(
-      array($operations[$operation_type_id]['function'], array($operation_content_types, $operation_type_name)),
+      array(
+        $operations[$operation_type_id]['function'],
+        array($operation_content_types, $operation_type_name),
+      ),
     ),
-    'progress_message' => 'Статус операции: @current из @total.',
+    'progress_message' => t('Status: @current of @total.'),
     'error_message' => t('Error!'),
     'finished' => 'indexisto_batch_finished',
   );
@@ -448,14 +441,13 @@ function indexisto_batch_start($form, &$form_state) {
 }
 
 /**
- * Добавляем данные в индекс.
+ * Batch logic.
  */
 function _batch_indexisto_do($content_types, $operation_type, &$context) {
-  // Если это комментарии, то обработка иная.
+  // If comments, we do different staff.
   $is_comment = in_array('comment', $content_types) ? TRUE : FALSE;
 
-  // Для каждого указанного типа.
-  // Получем все id нод нужного нам типа.
+  // For each content type we get ID's.
   if ($is_comment) {
     $cids = db_select('comment', 'c')
       ->fields('c', array('cid'))
@@ -464,7 +456,7 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
       ->fetchCol();
   }
   else {
-    // Список всех id нод.
+    // List of node id's.
     $nids = array();
 
     foreach ($content_types as $content_type) {
@@ -479,11 +471,11 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
     }
   }
 
-  // Получаем количество данных.
+  // Obtain the amount of data.
   if (empty($context['sandbox']['progress'])) {
-    // Текущее состояние.
+    // Current progress.
     $context['sandbox']['progress'] = 0;
-    // Всего.
+    // Total.
     if ($is_comment) {
       $context['sandbox']['max'] = count($cids);
     }
@@ -491,29 +483,28 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
       $context['sandbox']['max'] = count($nids);
     }
 
-    // Добавляем операцию в бд.
+    // ДAdd operation to db.
     watchdog('import', 'import indexisto');
   }
 
-  // Текущая итерация.
+  // Current iteration.
   if (empty($context['sandbox']['iteration'])) {
     $context['sandbox']['iteration'] = 0;
   }
 
-  // Проверяем не закончился ли цикл.
+  // If cycle not ended.
   if ($context['sandbox']['iteration'] < $context['sandbox']['max']) {
-    // Указываем сколько за один цикл проделывать операций, чтобы не
-    // положить сервер от нагрузки.
-    $limit = 10;
+    // Limit operation for each cycle.
+    $limit = 50;
 
-    // Количество уже проделанных операций.
+    // Count of finished data for this iteration cycle.
     $counter = 0;
 
     if ($context['sandbox']['progress'] != 0) {
       $context['sandbox']['iteration'] = $context['sandbox']['iteration'] + $limit;
     }
 
-    // Прогоняем наши данные.
+    // Work with data.
     for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
       if ($is_comment) {
         $comment = comment_load($cids[$i]);
@@ -521,18 +512,18 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
         indexisto_send_data($data, $operation_type);
       }
       else {
-        // Грузим ноду и отсылаем.
+        // Load node and send it.
         $node = node_load($nids[$i]);
         $data = indexisto_node_data_prepare($node);
         indexisto_send_data($data, $operation_type);
       }
 
-      // Указываем батчу что мы выполнили один продукт.
+      // When its done.
       $context['sandbox']['progress']++;
       $counter++;
 
-      // Выводим инфу для юзера.
-      $context['message'] = 'Выполнение операций.';
+      // Information to user.
+      $context['message'] = t('We working.');
       $context['results']['processed'] = $context['sandbox']['progress'];
     }
   }
@@ -543,29 +534,18 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
 }
 
 /**
- * @param $success
- * @param $results
- * @param $operations
- *
- * Сообщение результатов по окончанию.
+ * Message in the end of batch.
  */
 function indexisto_batch_finished($success, $results, $operations) {
   if ($success) {
-    drupal_set_message('Выполнено');
+    drupal_set_message(t('Done'));
   }
   else {
     $error_operation = reset($operations);
     drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array(
       '@operation' => $error_operation[0],
-      '@args' => print_r($error_operation[0], TRUE)
+      '@args' => print_r($error_operation[0], TRUE),
     )));
   }
   watchdog('import', 'import finished');
-}
-
-/**
- * Очищаем индекс полностью.
- */
-function indexisto_clear_index() {
-  // @TODO add clear index url.
 }

@@ -12,8 +12,8 @@ function indexisto_settings_form($form, &$form_state) {
 
   $form['indexisto_index_id'] = array(
     '#type' => 'textfield',
-    '#title' => t('Search index ID'),
-    '#description' => t('ID of your search index.'),
+    '#title' => t('Your search index ID'),
+    '#description' => t('You can obtain your index ID at adminpanel.indexisto.com'),
     '#default_value' => variable_get('indexisto_index_id', ''),
     '#size' => 60,
     '#maxlength' => 128,
@@ -24,7 +24,7 @@ function indexisto_settings_form($form, &$form_state) {
   // Secret key.
   $form['indexisto_secret_api_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('API secret'),
+    '#title' => t('API secret key'),
     '#default_value' => variable_get('indexisto_secret_api_key', ''),
     '#weight' => 1,
     '#required' => TRUE,
@@ -33,7 +33,7 @@ function indexisto_settings_form($form, &$form_state) {
   $form['indexisto_send_data'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable indexation'),
-    '#description' => t('On\off content indexation.'),
+    '#description' => t('Turn indexation on\off.'),
     '#default_value' => variable_get('indexisto_send_data', 0),
     '#weight' => 2,
   );
@@ -56,7 +56,7 @@ function indexisto_content_settings($form, &$form_state) {
   $form['indexisto_path_aliases'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use path aliases'),
-    '#description' => t("Enable this option for using path aliases for URL's."),
+    '#description' => t("Enable this option to use path aliases for URLs."),
     '#default_value' => variable_get('indexisto_path_aliases', 1),
     '#weight' => 2,
   );
@@ -85,7 +85,7 @@ function indexisto_content_settings($form, &$form_state) {
     // 1 - disabled.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_send_data'] = array(
       '#type' => 'checkbox',
-      '#title' => t('Block this content type for indexation.'),
+      '#title' => t('Prevent this content type from being indexed.'),
       '#description' => t('This content type will not be indexed.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_send_data', 0),
       '#weight' => -1,
@@ -94,8 +94,8 @@ function indexisto_content_settings($form, &$form_state) {
     // Title field.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_title'] = array(
       '#type' => 'textfield',
-      '#title' => t('Content title'),
-      '#description' => t('Returns content title.'),
+      '#title' => t('Document title'),
+      '#description' => t('Provide document title, typically node:title.'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_title', '[node:title]'),
       '#weight' => 0,
       '#token_insert' => TRUE,
@@ -104,8 +104,8 @@ function indexisto_content_settings($form, &$form_state) {
     // Content.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_body'] = array(
       '#type' => 'textfield',
-      '#title' => t('Content'),
-      '#description' => t('Main content of this content type.'),
+      '#title' => t('Main document text'),
+      '#description' => t('Provide main document text, typically node:body'),
       '#default_value' => variable_get('indexisto_' . $content_type . '_body', '[node:body]'),
       '#weight' => 1,
       '#token_insert' => TRUE,
@@ -114,9 +114,9 @@ function indexisto_content_settings($form, &$form_state) {
     // Summary text.
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_sumtext'] = array(
       '#type' => 'textfield',
-      '#title' => t('Summary content'),
-      '#description' => t('In this field we add all needed content data from current content-type. This data will be used for search.'),
-      '#default_value' => variable_get('indexisto_' . $content_type . '_sumtext', '[node:body] [node:field-tags]'),
+      '#title' => t('Summary document text'),
+      '#description' => t('Summarize all the document text to be indexed (except title). For example node:body + node:tags + node:author'),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_sumtext', '[node:body] [node:field_tags]'),
       '#weight' => 2,
       '#token_insert' => TRUE,
     );
@@ -125,8 +125,8 @@ function indexisto_content_settings($form, &$form_state) {
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_image'] = array(
       '#type' => 'textfield',
       '#title' => t('Image'),
-      '#description' => t('Main image for search results.'),
-      '#default_value' => variable_get('indexisto_' . $content_type . '_image', '[node:field-image]'),
+      '#description' => t('Choose image to be displayed in search results'),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_image', '[node:field_image]'),
       '#weight' => 3,
       '#token_insert' => TRUE,
     );
@@ -135,8 +135,8 @@ function indexisto_content_settings($form, &$form_state) {
     $form['content_types'][$content_type]['indexisto_' . $content_type . '_tags'] = array(
       '#type' => 'textfield',
       '#title' => t('Tags'),
-      '#description' => t('Field with tags of current content type.'),
-      '#default_value' => variable_get('indexisto_' . $content_type . '_tags', '[node:field-tags]'),
+      '#description' => t('Tags field of current content type.'),
+      '#default_value' => variable_get('indexisto_' . $content_type . '_tags', '[node:field_tags]'),
       '#weight' => 4,
       '#token_insert' => TRUE,
     );
@@ -172,7 +172,7 @@ function indexisto_content_settings($form, &$form_state) {
   // 1 - blocked.
   $form['comments']['indexisto_comments_send_data'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Disallow comments from indexation.'),
+    '#title' => t('Prevent comments from being indexed.'),
     '#description' => t('Comments will not be indexed.'),
     '#default_value' => variable_get('indexisto_comments_send_data', 0),
     '#weight' => -1,
@@ -180,8 +180,8 @@ function indexisto_content_settings($form, &$form_state) {
 
   $form['comments']['indexisto_comments_body'] = array(
     '#type' => 'textfield',
-    '#title' => t('Comment content'),
-    '#description' => t('Main content of the comment.'),
+    '#title' => t('Comment text'),
+    '#description' => t('Actual text of the comment.'),
     '#default_value' => variable_get('indexisto_comments_body', '[comment:body]'),
     '#weight' => 1,
     '#token_insert' => TRUE,
@@ -214,7 +214,7 @@ function indexisto_batch_form($form, &$form_state) {
 
   // Operation types.
   $operation_types = array(
-    0 => t('Add\update index data.'),
+    0 => t('Add\update index.'),
     1 => t('Remove from index.'),
   );
 
@@ -230,7 +230,7 @@ function indexisto_batch_form($form, &$form_state) {
     '#type' => 'fieldset',
     '#collapsible' => FALSE,
     '#title' => t('Help'),
-    '#description' => t('Choose content for doing operation. Comments are indexed separately from the content.'),
+    '#description' => t('Choose content for the operation. Comments and main content types are indexed separately.'),
   );
 
   // Allowed types for operations.
@@ -263,7 +263,7 @@ function indexisto_batch_form($form, &$form_state) {
     );
   }
   else {
-    form_set_error('indexisto_batch_form', t('In order to use this form, you must enable the sending of structured data and specify the key API.'));
+    form_set_error('indexisto_batch_form', t('In order to use this form, you must enable sending of structured data option and specify the key API.'));
   }
 
   return $form;
@@ -310,33 +310,33 @@ function indexisto_settings_first_time($form, &$form_state) {
   $form['register'] = array(
     '#type' => 'fieldset',
     '#title' => t('Register'),
-    '#description' => t('If you do not have an account in indexisto, you can specify here for your information and you will automatically create an account, search index and all the settings for the correct operation of the module.'),
+    '#description' => t('In case you have no account at Indexisto.com fill the form below to automatically create account and search index for the correct module operation.'),
   );
 
   $form['register']['register_agree'] = array(
     '#type' => 'checkbox',
     '#title' => t('I want to register an account'),
-    '#description' => t('Tick ​​this box to you account will be created automatically with all the necessary settings.'),
+    '#description' => t('Tick ​​this box to automatically create account with all the necessary settings.'),
   );
 
   $form['register']['register_email'] = array(
     '#type' => 'textfield',
     '#title' => t('E-Mail'),
-    '#description' => t('Specify the E-Mail which create an account.'),
+    '#description' => t('Specify valid E-Mail. Later you can use it as login at Indexisto.com.'),
     '#default_value' => variable_get('site_mail', ''),
   );
 
   $form['register']['register_secret'] = array(
     '#type' => 'textfield',
     '#title' => t('Secret key'),
-    '#description' => t('Specify the key to be used as a secret for the index.'),
-    '#default_value' => drupal_random_key('15'),
+    '#description' => t('Specify secret API key. Follow standard password security rules, use both digits and letters.'),
+    '#default_value' => indexisto_random_key(15),
   );
 
   $form['auth'] = array(
     '#type' => 'fieldset',
     '#title' => t('Authorization'),
-    '#description' => 'If you have already set up an account on the index and indexisto, fill in the appropriate fields.',
+    '#description' => t('If you already have an account and index at Indexisto.com, fill in the appropriate fields.'),
   );
 
   $form['auth']['auth_agree'] = array(
@@ -347,8 +347,8 @@ function indexisto_settings_first_time($form, &$form_state) {
 
   $form['auth']['index_id'] = array(
     '#type' => 'textfield',
-    '#title' => t('ID search engine'),
-    '#description' => t('Specify the ID of your search engine.'),
+    '#title' => t('Index ID'),
+    '#description' => t('Specify your existing index ID.'),
     '#default_value' => variable_get('indexisto_index_id', ''),
     '#size' => 60,
     '#maxlength' => 128,
@@ -357,7 +357,7 @@ function indexisto_settings_first_time($form, &$form_state) {
   $form['auth']['auth_secret'] = array(
     '#type' => 'textfield',
     '#title' => t('Secret key'),
-    '#description' => t('Specify the key to be used as a secret for the index.'),
+    '#description' => t('Specify secret key for the index.'),
     '#default_value' => '',
   );
 
@@ -381,11 +381,11 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
 
   // User must select only one of it.
   if ($is_auth && $is_register) {
-    drupal_set_message(t('Please decide you want to log in or register.'), 'error');
+    drupal_set_message(t('Please choose one of the following options: login or register.'), 'error');
   }
   // User cant select nothing.
   elseif (!$is_auth && !$is_register) {
-    drupal_set_message(t('Please decide you want to log in or register.'), 'error');
+    drupal_set_message(t('Please choose one of the following options: login or register.'), 'error');
   }
 
   // If user want to register.
@@ -394,7 +394,7 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
     $secret = $form_state['values']['register_secret'];
 
     if (empty($email) || empty($secret)) {
-      drupal_set_message(t('E-Mail field and secret are required'), 'error');
+      drupal_set_message(t('Please fill Email and Secret fields'), 'error');
     }
     else {
       $options = array(
@@ -422,10 +422,10 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
         // Clear cache for new menu items.
         menu_rebuild();
         // Congratulations.
-        drupal_set_message(t('You have successfully registered on indexisto.'), 'status');
+        drupal_set_message(t('You have successfully registered at Indexisto.'), 'status');
       }
       else {
-        drupal_set_message(t('Something went wrong with the registration of a new account. Perhaps you already have an account and you should be logged.'), 'error');
+        drupal_set_message(t('Something went wrong with the registration of a new account. Perhaps you already have an account. Try to use another email'), 'error');
       }
     }
   }
@@ -437,7 +437,7 @@ function indexisto_settings_first_time_submit($form, &$form_state) {
 
     // We just need one index id.
     if (empty($index_id)) {
-      drupal_set_message(t('For authorization must specify at least the index ID.'), 'error');
+      drupal_set_message(t('Please specify index ID.'), 'error');
     }
     else {
       variable_set('indexisto_index_id', $index_id);
@@ -466,7 +466,7 @@ function indexisto_style($form, &$form_state) {
   $form['indexisto_placeholder'] = array(
     '#type' => 'textfield',
     '#title' => t('Placeholder text'),
-    '#description' => t('The text that is displayed before entering the search query.'),
+    '#description' => t('The text that is displayed in the search box before entering search query.'),
     '#default_value' => variable_get('indexisto_placeholder', t('Start typing')),
     '#size' => 60,
     '#maxlength' => 128,

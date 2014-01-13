@@ -15,10 +15,8 @@ define('INDEXISTO_INDEX_DOMAIN_NAME', 'http://' . $_SERVER['SERVER_NAME']);
  * Create links in menu.
  */
 function indexisto_menu() {
-  $is_first_time = variable_get('indexisto_first_time', TRUE);
-
   // If user has 'first time' mark we show another form.
-  $settings = $is_first_time ? 'indexisto_settings_first_time' : 'indexisto_settings_form';
+  $settings = indexisto_is_first_time() ? 'indexisto_settings_first_time' : 'indexisto_settings_form';
 
   $items['admin/config/search/indexisto'] = array(
     'title' => 'Indexisto search',
@@ -43,7 +41,7 @@ function indexisto_menu() {
     'title' => 'Content settings',
     'description' => 'Can tweak materials return to the index.',
     'page callback' => 'drupal_get_form',
-    'access callback' => !$is_first_time,
+    'access callback' => !indexisto_is_first_time(),
     'page arguments' => array('indexisto_content_settings'),
     'access arguments' => array('administer site configuration'),
     'file' => 'indexisto.admin.inc',
@@ -54,7 +52,7 @@ function indexisto_menu() {
   $items['admin/config/search/indexisto/style'] = array(
     'title' => 'Styles',
     'page callback' => 'drupal_get_form',
-    'access callback' => !$is_first_time,
+    'access callback' => !indexisto_is_first_time(),
     'page arguments' => array('indexisto_style'),
     'access arguments' => array('administer site settings'),
     'file' => 'indexisto.admin.inc',
@@ -65,7 +63,7 @@ function indexisto_menu() {
   $items['admin/config/search/indexisto/batch'] = array(
     'title' => 'Bulk operations',
     'page callback' => 'drupal_get_form',
-    'access callback' => !$is_first_time,
+    'access callback' => !indexisto_is_first_time(),
     'page arguments' => array('indexisto_batch_form'),
     'access arguments' => array('administer site settings'),
     'file' => 'indexisto.admin.inc',
@@ -160,7 +158,7 @@ function indexisto_node_update($node) {
 function indexisto_node_delete($node) {
   // Id of deleted node.
   $values = array(
-    '_id' => $node->nid,
+    '_id' => 'nid_' . $node->nid,
   );
 
   // Prepare data to send.
@@ -178,7 +176,7 @@ function indexisto_node_data_prepare($node) {
   if (variable_get('indexisto_send_data', 0) && !variable_get('indexisto_' . $node->type . '_send_data', 0)) {
     // Prepare base data.
     $values = array(
-      '_id' => $node->nid,
+      '_id' => 'nid_' . $node->nid,
       'created' => date("Y-m-d\\TH:i:s", $node->created),
       '_subtype' => $node->type,
       '_url' => INDEXISTO_INDEX_DOMAIN_NAME . 'node/' . $node->nid,
@@ -313,7 +311,7 @@ function indexisto_comment_update($comment) {
 function indexisto_comment_delete($comment) {
   // Write our comment id.
   $values = array(
-    '_id' => $comment->cid,
+    '_id' => 'cid_' . $comment->cid,
   );
 
   // Prepare data.
@@ -330,7 +328,7 @@ function indexisto_comment_data_prepare($comment) {
   // If user allow to index comments (0).
   if (!variable_get('indexisto_comments_send_data', 0)) {
     $values = array(
-      '_id' => $comment->cid,
+      '_id' => 'cid_' . $comment->cid,
       'created' => date("Y-m-d\\TH:i:s", $comment->created),
       '_subtype' => 'comments',
     );
@@ -524,7 +522,7 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
       $counter++;
 
       // Information to user.
-      $context['message'] = t('We working.');
+      $context['message'] = t('We are working.');
       $context['results']['processed'] = $context['sandbox']['progress'];
     }
   }
@@ -549,4 +547,27 @@ function indexisto_batch_finished($success, $results, $operations) {
     )));
   }
   watchdog('import', 'import finished');
+}
+
+
+/**
+ * Generate random key.
+ * We wan't use drupal_random_key because it's work only in 7.24+.
+ */
+function indexisto_random_key($length = 10) {
+  $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  $randomString = '';
+
+  for ($i = 0; $i < $length; $i++) {
+    $randomString .= $characters[rand(0, strlen($characters) - 1)];
+  }
+
+  return $randomString;
+}
+
+/**
+ * First time in settings.
+ */
+function indexisto_is_first_time() {
+  return variable_get('indexisto_first_time', TRUE);
 }

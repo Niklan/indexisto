@@ -9,9 +9,9 @@
  *
  * Set up data after enable a module.
  */
-function indexisto_install() {
+function indexisto_search_search_install() {
   // Set 'first time' mark.
-  variable_set('indexisto_first_time', TRUE);
+  variable_set('indexisto_search_first_time', TRUE);
 }
 
 /**
@@ -19,8 +19,8 @@ function indexisto_install() {
  *
  * Remove our information.
  */
-function indexisto_uninstall() {
+function indexisto_search_uninstall() {
   // Remove all our variables and clear cache.
-  db_query("DELETE FROM {variable} WHERE name LIKE 'indexisto_%'");
+  db_query("DELETE FROM {variable} WHERE name LIKE 'indexisto_search_%'");
   cache_clear_all('variables', 'cache');
 }

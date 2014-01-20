@@ -3,10 +3,10 @@
  * @file
  * Integration with Indexisto.
  *
- * http://indexisto.com/
+ * http://indexisto_search.com/
  */
 
-define('INDEXISTO_DEFAULT_STYLES', 'outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;');
+define('INDEXISTO_DEFAULT_STYLES', 'outline-color: transparent;outline: none;background: #FFF url(http://servant.indexisto_search.com/files/searchbox/search_icon_21px.png) no-repeat scroll 6px center;border: 2px solid rgb(255, 151, 18);border-radius: 5px;width: 202px;padding: 0 0 0 31px;height: 32px;line-height: 23px;color: #abaaaa;font-family: Arial;font-size: 18px;');
 define('INDEXISTO_INDEX_DOMAIN_NAME', 'http://' . $_SERVER['SERVER_NAME']);
 
 /**
@@ -14,9 +14,9 @@ define('INDEXISTO_INDEX_DOMAIN_NAME', 'http://' . $_SERVER['SERVER_NAME']);
  *
  * Create links in menu.
  */
-function indexisto_menu() {
+function indexisto_search_menu() {
   // If user has 'first time' mark we show another form.
-  $settings = indexisto_is_first_time() ? 'indexisto_settings_first_time' : 'indexisto_settings_form';
+  $settings = indexisto_search_is_first_time() ? 'indexisto_search_settings_first_time' : 'indexisto_search_settings_form';
 
   $items['admin/config/search/indexisto'] = array(
     'title' => 'Indexisto search',
@@ -24,7 +24,7 @@ function indexisto_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array($settings),
     'access arguments' => array('administer site configuration'),
-    'file' => 'indexisto.admin.inc',
+    'file' => 'indexisto_search.admin.inc',
   );
 
   $items['admin/config/search/indexisto/settings'] = array(
@@ -32,7 +32,7 @@ function indexisto_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array($settings),
     'access arguments' => array('administer site configuration'),
-    'file' => 'indexisto.admin.inc',
+    'file' => 'indexisto_search.admin.inc',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => 0,
   );
@@ -41,10 +41,10 @@ function indexisto_menu() {
     'title' => 'Content settings',
     'description' => 'Can tweak materials return to the index.',
     'page callback' => 'drupal_get_form',
-    'access callback' => !indexisto_is_first_time(),
-    'page arguments' => array('indexisto_content_settings'),
+    'access callback' => !indexisto_search_is_first_time(),
+    'page arguments' => array('indexisto_search_content_settings'),
     'access arguments' => array('administer site configuration'),
-    'file' => 'indexisto.admin.inc',
+    'file' => 'indexisto_search.admin.inc',
     'type' => MENU_LOCAL_TASK,
     'weight' => 1,
   );
@@ -52,10 +52,10 @@ function indexisto_menu() {
   $items['admin/config/search/indexisto/style'] = array(
     'title' => 'Styles',
     'page callback' => 'drupal_get_form',
-    'access callback' => !indexisto_is_first_time(),
-    'page arguments' => array('indexisto_style'),
+    'access callback' => !indexisto_search_is_first_time(),
+    'page arguments' => array('indexisto_search_style'),
     'access arguments' => array('administer site settings'),
-    'file' => 'indexisto.admin.inc',
+    'file' => 'indexisto_search.admin.inc',
     'type' => MENU_LOCAL_TASK,
     'weight' => 2,
   );
@@ -63,10 +63,10 @@ function indexisto_menu() {
   $items['admin/config/search/indexisto/batch'] = array(
     'title' => 'Bulk operations',
     'page callback' => 'drupal_get_form',
-    'access callback' => !indexisto_is_first_time(),
-    'page arguments' => array('indexisto_batch_form'),
+    'access callback' => !indexisto_search_is_first_time(),
+    'page arguments' => array('indexisto_search_batch_form'),
     'access arguments' => array('administer site settings'),
-    'file' => 'indexisto.admin.inc',
+    'file' => 'indexisto_search.admin.inc',
     'type' => MENU_LOCAL_TASK,
     'weight' => 3,
   );
@@ -79,12 +79,12 @@ function indexisto_menu() {
  *
  * Define our block with input.
  */
-function indexisto_block_info() {
+function indexisto_search_block_info() {
   $blocks = array();
 
   // If index id not st, we do not create block.
-  if (variable_get('indexisto_index_id', FALSE)) {
-    $blocks['indexisto_search'] = array(
+  if (variable_get('indexisto_search_index_id', FALSE)) {
+    $blocks['indexisto_search_search'] = array(
       'info' => t('Indexisto search'),
     );
   }
@@ -97,15 +97,15 @@ function indexisto_block_info() {
  *
  * Generaet content for our block.
  */
-function indexisto_block_view($delta) {
+function indexisto_search_block_view($delta) {
   $block = array();
 
   // Catch our block.
-  if ($delta == 'indexisto_search') {
-    $index_id = variable_get('indexisto_index_id');
-    $placeholder = variable_get('indexisto_placeholder', 'Начните ввод');
+  if ($delta == 'indexisto_search_search') {
+    $index_id = variable_get('indexisto_search_index_id');
+    $placeholder = variable_get('indexisto_search_placeholder', 'Начните ввод');
     // Inline styles for input.
-    $styles = variable_get('indexisto_input_style', INDEXISTO_DEFAULT_STYLES);
+    $styles = variable_get('indexisto_search_input_style', INDEXISTO_DEFAULT_STYLES);
 
     $block['content'] = "<input autocomplete='off'  autocorrect='off' id='indx_srchbox_{$index_id}' placeholder='{$placeholder}' style='{$styles}' type='text' />";
   }
@@ -118,8 +118,8 @@ function indexisto_block_view($delta) {
  *
  * Attach our js file.
  */
-function indexisto_preprocess_html(&$variables) {
-  drupal_add_js('http://servant.indexisto.com/files/searchbox/searchbox.nocache.js?type=edit', 'external');
+function indexisto_search_preprocess_html(&$variables) {
+  drupal_add_js('http://servant.indexisto_search.com/files/searchbox/searchbox.nocache.js?type=edit', 'external');
 }
 
 /**
@@ -127,10 +127,10 @@ function indexisto_preprocess_html(&$variables) {
  *
  * When nnode is added.
  */
-function indexisto_node_insert($node) {
+function indexisto_search_node_insert($node) {
   if ($node->status) {
-    $data = indexisto_node_data_prepare($node);
-    indexisto_send_data($data);
+    $data = indexisto_search_node_data_prepare($node);
+    indexisto_search_send_data($data);
   }
 }
 
@@ -139,14 +139,14 @@ function indexisto_node_insert($node) {
  *
  * When node is updated.
  */
-function indexisto_node_update($node) {
+function indexisto_search_node_update($node) {
   if ($node->status) {
-    $data = indexisto_node_data_prepare($node);
-    indexisto_send_data($data);
+    $data = indexisto_search_node_data_prepare($node);
+    indexisto_search_send_data($data);
   }
   // If not not published we remove it from index.
   else {
-    indexisto_node_delete($node);
+    indexisto_search_node_delete($node);
   }
 }
 
@@ -155,7 +155,7 @@ function indexisto_node_update($node) {
  *
  * When node is deleted.
  */
-function indexisto_node_delete($node) {
+function indexisto_search_node_delete($node) {
   // Id of deleted node.
   $values = array(
     '_id' => 'nid_' . $node->nid,
@@ -165,15 +165,15 @@ function indexisto_node_delete($node) {
   $data = json_encode($values);
 
   // Send data for deletion.
-  indexisto_send_data($data, 'DELETE');
+  indexisto_search_send_data($data, 'DELETE');
 }
 
 /**
  * Prepare node data for sending into index.
  */
-function indexisto_node_data_prepare($node) {
+function indexisto_search_node_data_prepare($node) {
   // If send data enabled and this content type allowed to send data.
-  if (variable_get('indexisto_send_data', 0) && !variable_get('indexisto_' . $node->type . '_send_data', 0)) {
+  if (variable_get('indexisto_search_send_data', 0) && !variable_get('indexisto_search_' . $node->type . '_send_data', 0)) {
     // Prepare base data.
     $values = array(
       '_id' => 'nid_' . $node->nid,
@@ -187,7 +187,7 @@ function indexisto_node_data_prepare($node) {
 
     // Prepare material URL.
     // Change system url for alias.
-    if (variable_get('indexisto_path_aliases', 1)) {
+    if (variable_get('indexisto_search_path_aliases', 1)) {
       if (!empty($node->path['alias'])) {
         $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $node->path['alias'];
       }
@@ -198,15 +198,15 @@ function indexisto_node_data_prepare($node) {
     }
 
     // If title set.
-    $title = variable_get('indexisto_' . $node->type . '_title', '[node:title]');
+    $title = variable_get('indexisto_search_' . $node->type . '_title', '[node:title]');
     $title ? $values['title'] = token_replace($title, array('node' => $node)) : FALSE;
 
     // If body set.
-    $body = variable_get('indexisto_' . $node->type . '_body', '[node:body]');
+    $body = variable_get('indexisto_search_' . $node->type . '_body', '[node:body]');
     $body ? $values['body'] = token_replace($body, array('node' => $node), array('clear' => TRUE)) : FALSE;
 
     // If image set.
-    $image = variable_get('indexisto_' . $node->type . '_image', '[node:field_image]');
+    $image = variable_get('indexisto_search_' . $node->type . '_image', '[node:field_image]');
     // Unfortunately, the token with the image not handled properly, so we take
     // the initiative. We get the name of the token field that the user has
     // specified as a picture, and pull it straight on the value of our
@@ -254,22 +254,22 @@ function indexisto_node_data_prepare($node) {
     }
 
     // If tags set.
-    $tags = variable_get('indexisto_' . $node->type . '_tags', '[node:field_tags]');
+    $tags = variable_get('indexisto_search_' . $node->type . '_tags', '[node:field_tags]');
     $tags ? $values['tags'] = token_replace($tags, array('node' => $node), array('clear' => TRUE)) : FALSE;
 
     // Sumtext - all content data allowed for search.
-    $sumtext = variable_get('indexisto_' . $node->type . '_sumtext', '[node:body] [node:field_tags]');
+    $sumtext = variable_get('indexisto_search_' . $node->type . '_sumtext', '[node:body] [node:field_tags]');
     $sumtext ? $values['_sumtext'] = token_replace($sumtext, array('node' => $node), array('clear' => TRUE)) : FALSE;
 
     // Remove tabs and transfers, all tags and write it in JSON format.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
-    // Create own hook_indexisto_node_data_prepare_alter().
+    // Create own hook_indexisto_search_node_data_prepare_alter().
     // If no one uses it, we do nothing.
-    if (count(module_implements('indexisto_node_data_prepare_alter')) > 0) {
+    if (count(module_implements('indexisto_search_node_data_prepare_alter')) > 0) {
       // If called we give them data.
-      $alter_data = module_invoke_all('indexisto_node_data_prepare_alter', $data);
-      drupal_alter('indexisto_node_data_prepare_alter', $data);
+      $alter_data = module_invoke_all('indexisto_search_node_data_prepare_alter', $data);
+      drupal_alter('indexisto_search_node_data_prepare_alter', $data);
       // Give changed data.
       $data = $alter_data[0];
     }
@@ -284,10 +284,10 @@ function indexisto_node_data_prepare($node) {
  *
  * When new comment is added.
  */
-function indexisto_comment_insert($comment) {
+function indexisto_search_comment_insert($comment) {
   if ($comment->status) {
-    $data = indexisto_comment_data_prepare($comment);
-    indexisto_send_data($data);
+    $data = indexisto_search_comment_data_prepare($comment);
+    indexisto_search_send_data($data);
   }
 }
 
@@ -296,10 +296,10 @@ function indexisto_comment_insert($comment) {
  *
  * Catch on update.
  */
-function indexisto_comment_update($comment) {
+function indexisto_search_comment_update($comment) {
   if ($comment->status) {
-    $data = indexisto_comment_data_prepare($comment);
-    indexisto_send_data($data);
+    $data = indexisto_search_comment_data_prepare($comment);
+    indexisto_search_send_data($data);
   }
 }
 
@@ -308,7 +308,7 @@ function indexisto_comment_update($comment) {
  *
  * When comment is deleted.
  */
-function indexisto_comment_delete($comment) {
+function indexisto_search_comment_delete($comment) {
   // Write our comment id.
   $values = array(
     '_id' => 'cid_' . $comment->cid,
@@ -318,15 +318,15 @@ function indexisto_comment_delete($comment) {
   $data = json_encode($values);
 
   // Send remove request.
-  indexisto_send_data($data, 'DELETE');
+  indexisto_search_send_data($data, 'DELETE');
 }
 
 /**
  * Prepare comment data for sending in index.
  */
-function indexisto_comment_data_prepare($comment) {
+function indexisto_search_comment_data_prepare($comment) {
   // If user allow to index comments (0).
-  if (!variable_get('indexisto_comments_send_data', 0)) {
+  if (!variable_get('indexisto_search_comments_send_data', 0)) {
     $values = array(
       '_id' => 'cid_' . $comment->cid,
       'created' => date("Y-m-d\\TH:i:s", $comment->created),
@@ -341,18 +341,18 @@ function indexisto_comment_data_prepare($comment) {
     $values['_url'] = INDEXISTO_INDEX_DOMAIN_NAME . $alias . '#comment-' . $comment->cid;
 
     // If content is set.
-    $body = variable_get('indexisto_comments_body', '[comment:body]');
+    $body = variable_get('indexisto_search_comments_body', '[comment:body]');
     $body ? $values['_sumtext'] = strip_tags(token_replace($body, array('comment' => $comment), array('clear' => TRUE))) : FALSE;
 
     // Remove tabs and transfers, all tags and write it in JSON format.
     $data = str_replace(array("\\n", "\\t", "\\r"), "", strip_tags(json_encode($values)));
 
-    // Create own indexisto_comment_data_prepare_alter().
+    // Create own indexisto_search_comment_data_prepare_alter().
     // If no one uses it, we do nothing.
-    if (count(module_implements('indexisto_comment_data_prepare_alter')) > 0) {
+    if (count(module_implements('indexisto_search_comment_data_prepare_alter')) > 0) {
       // If called we give them data.
-      $alter_data = module_invoke_all('indexisto_comment_data_prepare_alter', $data);
-      drupal_alter('indexisto_comment_data_prepare_alter', $data);
+      $alter_data = module_invoke_all('indexisto_search_comment_data_prepare_alter', $data);
+      drupal_alter('indexisto_search_comment_data_prepare_alter', $data);
       // Give changed data.
       $data = $alter_data[0];
     }
@@ -362,14 +362,14 @@ function indexisto_comment_data_prepare($comment) {
 }
 
 /**
- * Send data to indexisto.
+ * Send data to indexisto_search.
  */
-function indexisto_send_data($data, $method = 'POST') {
-  $api_url = 'http://api.indexisto.com';
+function indexisto_search_send_data($data, $method = 'POST') {
+  $api_url = 'http://api.indexisto_search.com';
   $api_version = '/1.0';
   $document = '/document';
-  $indexid = '/' . variable_get('indexisto_index_id');
-  $secret = variable_get('indexisto_secret_api_key');
+  $indexid = '/' . variable_get('indexisto_search_index_id');
+  $secret = variable_get('indexisto_search_secret_api_key');
 
   // Generate request url.
   $request_url = $api_url . $api_version . $document . $indexid . '/default';
@@ -393,7 +393,7 @@ function indexisto_send_data($data, $method = 'POST') {
 /**
  * Batch start.
  */
-function indexisto_batch_start($form, &$form_state) {
+function indexisto_search_batch_start($form, &$form_state) {
   // Operation type.
   // 0 - update and adding.
   // 1 - remove from index.
@@ -404,11 +404,11 @@ function indexisto_batch_start($form, &$form_state) {
   $operations = array(
     0 => array(
       'name' => 'Add\remove to index',
-      'function' => '_batch_indexisto_do',
+      'function' => '_batch_indexisto_search_do',
     ),
     1 => array(
       'name' => 'Remove from index',
-      'function' => '_batch_indexisto_do',
+      'function' => '_batch_indexisto_search_do',
     ),
   );
 
@@ -433,7 +433,7 @@ function indexisto_batch_start($form, &$form_state) {
     ),
     'progress_message' => t('Status: @current of @total.'),
     'error_message' => t('Error!'),
-    'finished' => 'indexisto_batch_finished',
+    'finished' => 'indexisto_search_batch_finished',
   );
 
   batch_set($batch);
@@ -442,7 +442,7 @@ function indexisto_batch_start($form, &$form_state) {
 /**
  * Batch logic.
  */
-function _batch_indexisto_do($content_types, $operation_type, &$context) {
+function _batch_indexisto_search_do($content_types, $operation_type, &$context) {
   // If comments, we do different staff.
   $is_comment = in_array('comment', $content_types) ? TRUE : FALSE;
 
@@ -507,14 +507,14 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
     for ($i = $context['sandbox']['iteration']; $i < $context['sandbox']['max'] && $counter < $limit; $i++) {
       if ($is_comment) {
         $comment = comment_load($cids[$i]);
-        $data = indexisto_comment_data_prepare($comment);
-        indexisto_send_data($data, $operation_type);
+        $data = indexisto_search_comment_data_prepare($comment);
+        indexisto_search_send_data($data, $operation_type);
       }
       else {
         // Load node and send it.
         $node = node_load($nids[$i]);
-        $data = indexisto_node_data_prepare($node);
-        indexisto_send_data($data, $operation_type);
+        $data = indexisto_search_node_data_prepare($node);
+        indexisto_search_send_data($data, $operation_type);
       }
 
       // When its done.
@@ -535,7 +535,7 @@ function _batch_indexisto_do($content_types, $operation_type, &$context) {
 /**
  * Message in the end of batch.
  */
-function indexisto_batch_finished($success, $results, $operations) {
+function indexisto_search_batch_finished($success, $results, $operations) {
   if ($success) {
     drupal_set_message(t('Done'));
   }
@@ -554,7 +554,7 @@ function indexisto_batch_finished($success, $results, $operations) {
  * Generate random key.
  * We wan't use drupal_random_key because it's work only in 7.24+.
  */
-function indexisto_random_key($length = 10) {
+function indexisto_search_random_key($length = 10) {
   $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   $randomString = '';
 
@@ -568,6 +568,6 @@ function indexisto_random_key($length = 10) {
 /**
  * First time in settings.
  */
-function indexisto_is_first_time() {
-  return variable_get('indexisto_first_time', TRUE);
+function indexisto_search_is_first_time() {
+  return variable_get('indexisto_search_first_time', TRUE);
 }
